@@ -6,7 +6,7 @@ description = "An image processing pipeline"
 documentation = "https://docs.rs/imagepipe/"
 #homepage = "..."
 repository = "https://github.com/pedrocr/imagepipe"
-license = "LGPL-3"
+license = "LGPL-3.0-only"
 categories = ["multimedia::images"]
 
 [dependencies]
