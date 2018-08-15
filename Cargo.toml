@@ -20,7 +20,10 @@ bincode = "1"
 sha2 = "0.6"
 multicache = "0.4"
 image = "0.19"
-rawloader = "0.35.1"
+
+[dependencies.rawloader]
+version = "0.35"
+path = "../rawloader"
 
 [profile.dev]
 opt-level = 3
