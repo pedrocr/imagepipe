@@ -90,7 +90,7 @@ fn rotate_buffer(buf: &OpBuffer, orientation: &Orientation) -> OpBuffer {
 
 #[cfg(test)]
 mod tests {
-  use rawloader::decoders::Orientation;
+  use rawloader::Orientation;
   use buffer::OpBuffer;
   use super::rotate_buffer;
 
