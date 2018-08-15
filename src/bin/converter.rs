@@ -3,7 +3,6 @@ use std::fs::File;
 use std::error::Error;
 use std::io::prelude::*;
 use std::io::BufWriter;
-use std::sync::Arc;
 extern crate time;
 extern crate imagepipe;
 extern crate rawloader;
@@ -50,10 +49,9 @@ fn main() {
   println!("CFA is {:?}", image.cfa);
   println!("crops are {:?}", image.crops);
 
-  let decoded = {
-    let mut pipeline = imagepipe::Pipeline::new(&image, 0, 0, true);
-    let buf = pipeline.run();
-    Arc::try_unwrap(buf).unwrap()
+  let decoded = match imagepipe::simple_decode_8bit(file, 0, 0) {
+    Ok(img) => img,
+    Err(e) => {error(&e);unreachable!()},
   };
 
   let uf = match File::create(outfile) {
@@ -65,10 +63,7 @@ fn main() {
   if let Err(err) = f.write_all(&preamble) {
     error(err.description());
   }
-  for pix in decoded.data {
-    let pixel = ((pix.max(0.0)*255.0).min(255.0)) as u8;
-    if let Err(err) = f.write_all(&[pixel]) {
-      error(err.description());
-    }
+  if let Err(err) = f.write_all(&decoded.data) {
+    error(err.description());
   }
 }
