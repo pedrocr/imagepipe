@@ -1,13 +1,13 @@
-use ops::*;
+use opbasics::*;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpGoFloat {
-  width: usize,
-  height: usize,
-  x: usize,
-  y: usize,
-  cpp: usize,
-  is_cfa: bool,
+  pub width: usize,
+  pub height: usize,
+  pub x: usize,
+  pub y: usize,
+  pub cpp: usize,
+  pub is_cfa: bool,
 }
 
 impl OpGoFloat {

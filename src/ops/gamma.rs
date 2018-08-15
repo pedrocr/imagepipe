@@ -1,4 +1,4 @@
-use ops::*;
+use opbasics::*;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpGamma {

@@ -1,10 +1,10 @@
-use ops::*;
+use opbasics::*;
 
 use std::cmp;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpBaseCurve {
-  points: Vec<(f32, f32)>,
+  pub points: Vec<(f32, f32)>,
 }
 
 impl OpBaseCurve {

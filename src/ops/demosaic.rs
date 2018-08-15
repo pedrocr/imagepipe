@@ -1,8 +1,8 @@
-use ops::*;
+use opbasics::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpDemosaic {
-  cfa: String,
+  pub cfa: String,
 }
 
 impl OpDemosaic {

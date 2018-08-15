@@ -7,8 +7,10 @@ mod buffer;
 use self::buffer::*;
 mod hasher;
 mod ops;
+mod opbasics;
 mod pipeline;
 pub use self::pipeline::*;
+pub use self::ops::*;
 
 use std::sync::Arc;
 

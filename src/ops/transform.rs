@@ -1,11 +1,11 @@
-use ops::*;
+use opbasics::*;
 
 use std::mem;
 use std::usize;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpTransform {
-  orientation: Orientation,
+  pub orientation: Orientation,
 }
 
 impl OpTransform {

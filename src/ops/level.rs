@@ -1,10 +1,10 @@
-use ops::*;
+use opbasics::*;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpLevel {
-  blacklevels: [f32;4],
-  whitelevels: [f32;4],
-  wb_coeffs: [f32;4],
+  pub blacklevels: [f32;4],
+  pub whitelevels: [f32;4],
+  pub wb_coeffs: [f32;4],
 }
 
 fn from_int4(arr: [u16;4]) -> [f32;4] {

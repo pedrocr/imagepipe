@@ -1,4 +1,5 @@
 use ops::*;
+use opbasics::*;
 
 extern crate multicache;
 use self::multicache::MultiCache;
@@ -56,14 +57,14 @@ pub struct PipelineGlobals<'a> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PipelineOps {
-  gofloat: gofloat::OpGoFloat,
-  demosaic: demosaic::OpDemosaic,
-  level: level::OpLevel,
-  tolab: colorspaces::OpToLab,
-  basecurve: curves::OpBaseCurve,
-  fromlab: colorspaces::OpFromLab,
-  gamma: gamma::OpGamma,
-  transform: transform::OpTransform,
+  pub gofloat: gofloat::OpGoFloat,
+  pub demosaic: demosaic::OpDemosaic,
+  pub level: level::OpLevel,
+  pub tolab: colorspaces::OpToLab,
+  pub basecurve: curves::OpBaseCurve,
+  pub fromlab: colorspaces::OpFromLab,
+  pub gamma: gamma::OpGamma,
+  pub transform: transform::OpTransform,
 }
 
 macro_rules! for_vals {
@@ -97,14 +98,14 @@ macro_rules! all_ops {
 
 #[derive(Debug)]
 pub struct Pipeline<'a> {
-  globals: PipelineGlobals<'a>,
-  ops: PipelineOps,
+  pub globals: PipelineGlobals<'a>,
+  pub ops: PipelineOps,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PipelineSerialization {
-  version: u32,
-  filehash: String,
+  pub version: u32,
+  pub filehash: String,
 }
 
 impl<'a> Pipeline<'a> {

@@ -1,8 +1,8 @@
-use ops::*;
+use opbasics::*;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpToLab {
-  cam_to_xyz: [[f32;4];3],
+  pub cam_to_xyz: [[f32;4];3],
 }
 
 impl OpToLab {
