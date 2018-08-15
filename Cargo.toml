@@ -23,7 +23,7 @@ image = "0.19"
 
 [dependencies.rawloader]
 version = "0.35"
-path = "../rawloader"
+#path = "../rawloader"
 
 [profile.dev]
 opt-level = 3
