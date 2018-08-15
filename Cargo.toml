@@ -24,3 +24,7 @@ rawloader = "0.35.1"
 
 [profile.dev]
 opt-level = 3
+
+[[bin]]
+name = "converter"
+doc = false
