@@ -1,5 +1,4 @@
-use decoders::RawImage;
-use imageops::*;
+use ops::*;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpToLab {

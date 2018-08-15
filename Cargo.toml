@@ -1,0 +1,25 @@
+[package]
+name = "imagepipe"
+version = "0.1.0"
+authors = ["Pedro Côrte-Real <pedro@pedrocr.net>"]
+description = "An image processing pipeline"
+documentation = "https://docs.rs/imagepipe/"
+#homepage = "..."
+repository = "https://github.com/pedrocr/imagepipe"
+license = "LGPL-3"
+categories = ["multimedia::images"]
+
+[dependencies]
+time = "0.1.38"
+lazy_static = "1"
+rayon = "1"
+serde = "1"
+serde_derive = "1"
+serde_yaml = "0.7.1"
+bincode = "1"
+sha2 = "0.6.0"
+multicache = "0.4.1"
+rawloader = "0.34.0"
+
+[profile.dev]
+opt-level = 3

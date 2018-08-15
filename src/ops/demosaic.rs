@@ -1,6 +1,4 @@
-use decoders::RawImage;
-use decoders::cfa::CFA;
-use imageops::*;
+use ops::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpDemosaic {

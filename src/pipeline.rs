@@ -1,15 +1,16 @@
-use imageops::*;
-use imageops::ops::*;
+use ops::*;
 
 extern crate multicache;
 use self::multicache::MultiCache;
-use std::sync::Arc;
-use std::io::Write;
-
 extern crate time;
 extern crate serde;
 extern crate serde_yaml;
 use self::serde::{Serialize,Deserialize};
+
+use std::fmt::Debug;
+use std::sync::Arc;
+use std::io::Write;
+
 
 fn do_timing<O, F: FnMut() -> O>(_name: &str, mut closure: F) -> O {
   //let from_time = time::precise_time_ns();

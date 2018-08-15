@@ -1,15 +1,15 @@
+#[macro_use] extern crate serde_derive;
+#[macro_use] extern crate lazy_static;
+extern crate rawloader;
+use rawloader::RawImage;
+
 mod buffer;
 use self::buffer::*;
 mod hasher;
-use self::hasher::*;
 mod ops;
+mod pipeline;
+pub use self::pipeline::*;
 
-pub mod pipeline;
-use self::pipeline::*;
-
-use decoders::RawImage;
-
-use std::fmt::Debug;
 use std::sync::Arc;
 
 fn simple_decode_full(img: &RawImage, maxwidth: usize, maxheight: usize, linear: bool) -> OpBuffer {

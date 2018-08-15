@@ -1,6 +1,6 @@
+use ops::*;
+
 use std::cmp;
-use decoders::RawImage;
-use imageops::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpBaseCurve {
