@@ -31,40 +31,78 @@ impl<'a> ImageOp<'a> for OpGoFloat {
     let x = self.x;
     let y = self.y;
 
-    let buf = if self.cpp == 1 && !self.is_cfa {
-      // We're in a monochrome image so turn it into RGB
-      let mut out = OpBuffer::new(self.width, self.height, 4);
-      out.mutate_lines(&(|line: &mut [f32], row| {
-        for (o, i) in line.chunks_mut(4).zip(img.data[img.width*(row+y)+x..].chunks(1)) {
-          o[0] = i[0] as f32;
-          o[1] = i[0] as f32;
-          o[2] = i[0] as f32;
-          o[3] = 0.0;
+    let buf = match img.data {
+      RawImageData::Integer(ref data) => {
+        if self.cpp == 1 && !self.is_cfa {
+          // We're in a monochrome image so turn it into RGB
+          let mut out = OpBuffer::new(self.width, self.height, 4);
+          out.mutate_lines(&(|line: &mut [f32], row| {
+            for (o, i) in line.chunks_mut(4).zip(data[img.width*(row+y)+x..].chunks(1)) {
+              o[0] = i[0] as f32;
+              o[1] = i[0] as f32;
+              o[2] = i[0] as f32;
+              o[3] = 0.0;
+            }
+          }));
+          out
+        } else if self.cpp == 3 {
+          // We're in an RGB image, turn it into four channel
+          let mut out = OpBuffer::new(self.width, self.height, 4);
+          out.mutate_lines(&(|line: &mut [f32], row| {
+            for (o, i) in line.chunks_mut(4).zip(data[(img.width*(row+y)+x)*3..].chunks(3)) {
+              o[0] = i[0] as f32;
+              o[1] = i[1] as f32;
+              o[2] = i[2] as f32;
+              o[3] = 0.0;
+            }
+          }));
+          out
+        } else {
+          let mut out = OpBuffer::new(self.width, self.height, img.cpp);
+          out.mutate_lines(&(|line: &mut [f32], row| {
+            for (o, i) in line.chunks_mut(1).zip(data[img.width*(row+y)+x..].chunks(1)) {
+              o[0] = i[0] as f32;
+            }
+          }));
+          out
         }
-      }));
-      out
-    } else if self.cpp == 3 {
-      // We're in an RGB image, turn it into four channel
-      let mut out = OpBuffer::new(self.width, self.height, 4);
-      out.mutate_lines(&(|line: &mut [f32], row| {
-        for (o, i) in line.chunks_mut(4).zip(img.data[(img.width*(row+y)+x)*3..].chunks(3)) {
-          o[0] = i[0] as f32;
-          o[1] = i[1] as f32;
-          o[2] = i[2] as f32;
-          o[3] = 0.0;
+      },
+      RawImageData::Float(ref data) => {
+        if self.cpp == 1 && !self.is_cfa {
+          // We're in a monochrome image so turn it into RGB
+          let mut out = OpBuffer::new(self.width, self.height, 4);
+          out.mutate_lines(&(|line: &mut [f32], row| {
+            for (o, i) in line.chunks_mut(4).zip(data[img.width*(row+y)+x..].chunks(1)) {
+              o[0] = i[0];
+              o[1] = i[0];
+              o[2] = i[0];
+              o[3] = 0.0;
+            }
+          }));
+          out
+        } else if self.cpp == 3 {
+          // We're in an RGB image, turn it into four channel
+          let mut out = OpBuffer::new(self.width, self.height, 4);
+          out.mutate_lines(&(|line: &mut [f32], row| {
+            for (o, i) in line.chunks_mut(4).zip(data[(img.width*(row+y)+x)*3..].chunks(3)) {
+              o[0] = i[0];
+              o[1] = i[1];
+              o[2] = i[2];
+              o[3] = 0.0;
+            }
+          }));
+          out
+        } else {
+          let mut out = OpBuffer::new(self.width, self.height, img.cpp);
+          out.mutate_lines(&(|line: &mut [f32], row| {
+            for (o, i) in line.chunks_mut(1).zip(data[img.width*(row+y)+x..].chunks(1)) {
+              o[0] = i[0];
+            }
+          }));
+          out
         }
-      }));
-      out
-    } else {
-      let mut out = OpBuffer::new(self.width, self.height, img.cpp);
-      out.mutate_lines(&(|line: &mut [f32], row| {
-        for (o, i) in line.chunks_mut(1).zip(img.data[img.width*(row+y)+x..].chunks(1)) {
-          o[0] = i[0] as f32;
-        }
-      }));
-      out
+      },
     };
-
     pipeline.cache.put(outid, buf, 1);
   }
 }

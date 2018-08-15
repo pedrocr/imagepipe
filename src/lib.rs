@@ -16,7 +16,7 @@ use std::sync::Arc;
 use std::path::Path;
 
 fn simple_decode_full<P: AsRef<Path>>(img: P, maxwidth: usize, maxheight: usize, linear: bool) -> Result<OpBuffer, String> {
-  let img = try!(rawloader::decode(img));
+  let img = try!(rawloader::decode_file(img).map_err(|err| err.to_string()));
 
   let buf = {
     let mut pipeline = Pipeline::new(&img, maxwidth, maxheight, linear);

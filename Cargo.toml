@@ -19,8 +19,8 @@ serde_yaml = "0.7"
 bincode = "1"
 sha2 = "0.6"
 multicache = "0.4"
-rawloader = "0.34"
 image = "0.19"
+rawloader = "0.35.1"
 
 [profile.dev]
 opt-level = 3
