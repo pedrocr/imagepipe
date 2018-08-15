@@ -90,8 +90,8 @@ fn rotate_buffer(buf: &OpBuffer, orientation: &Orientation) -> OpBuffer {
 
 #[cfg(test)]
 mod tests {
-  use decoders::Orientation;
-  use imageops::OpBuffer;
+  use rawloader::decoders::Orientation;
+  use buffer::OpBuffer;
   use super::rotate_buffer;
 
   // Store a colorful capital F as a constant, since it is used in all tests
