@@ -67,7 +67,7 @@ pub struct PipelineGlobals {
   pub settings: PipelineSettings,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PipelineOps {
   pub gofloat: gofloat::OpGoFloat,
   pub demosaic: demosaic::OpDemosaic,
@@ -77,6 +77,16 @@ pub struct PipelineOps {
   pub fromlab: colorspaces::OpFromLab,
   pub gamma: gamma::OpGamma,
   pub transform: transform::OpTransform,
+}
+
+impl PartialEq for PipelineOps {
+  fn eq(&self, other: &Self) -> bool {
+    let mut selfhasher = BufHasher::new();
+    selfhasher.from_serialize(self);
+    let mut otherhasher = BufHasher::new();
+    otherhasher.from_serialize(other);
+    selfhasher.result() == otherhasher.result()
+  }
 }
 
 macro_rules! for_vals {
