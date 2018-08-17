@@ -1,6 +1,7 @@
 use ops::*;
 use opbasics::*;
 
+extern crate rawloader;
 extern crate multicache;
 use self::multicache::MultiCache;
 extern crate time;
@@ -11,13 +12,24 @@ use self::serde::{Serialize,Deserialize};
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::io::Write;
+use std::path::Path;
 
+/// A RawImage processed into a full 8bit sRGB image with levels and gamma
+///
+/// The data is a Vec<u8> width width*height*3 elements, where each element is a value
+/// between 0 and 255 with the intensity of the color channel with gamma applied
+#[derive(Debug, Clone)]
+pub struct SRGBImage {
+  pub width: usize,
+  pub height: usize,
+  pub data: Vec<u8>,
+}
 
 fn do_timing<O, F: FnMut() -> O>(_name: &str, mut closure: F) -> O {
   //let from_time = time::precise_time_ns();
   let ret = closure();
   //let to_time = time::precise_time_ns();
-  //println!("{} ms for '{}'", (to_time - from_time)/1000000, name);
+  //println!("{} ms for '{}'", (to_time - from_time)/1000000, _name);
 
   ret
 }
@@ -49,13 +61,13 @@ impl PipelineSettings{
 }
 
 #[derive(Debug)]
-pub struct PipelineGlobals<'a> {
+pub struct PipelineGlobals {
   pub cache: MultiCache<BufHash, OpBuffer>,
-  pub image: &'a RawImage,
+  pub image: RawImage,
   pub settings: PipelineSettings,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PipelineOps {
   pub gofloat: gofloat::OpGoFloat,
   pub demosaic: demosaic::OpDemosaic,
@@ -97,8 +109,8 @@ macro_rules! all_ops {
 }
 
 #[derive(Debug)]
-pub struct Pipeline<'a> {
-  pub globals: PipelineGlobals<'a>,
+pub struct Pipeline {
+  pub globals: PipelineGlobals,
   pub ops: PipelineOps,
 }
 
@@ -108,8 +120,13 @@ pub struct PipelineSerialization {
   pub filehash: String,
 }
 
-impl<'a> Pipeline<'a> {
-  pub fn new(img: &RawImage, maxwidth: usize, maxheight: usize, linear: bool) -> Pipeline {
+impl Pipeline {
+  pub fn new_from_file<P: AsRef<Path>>(path: P, maxwidth: usize, maxheight: usize, linear: bool) -> Result<Pipeline, String> {
+    let img = try!(rawloader::decode_file(path).map_err(|err| err.to_string()));
+    Self::new_from_rawimage(img, maxwidth, maxheight, linear)
+  }
+
+  pub fn new_from_rawimage(img: RawImage, maxwidth: usize, maxheight: usize, linear: bool) -> Result<Pipeline, String> {
     // Check if the image's orientation results in a rotation that
     // swaps the maximum width with the maximum height
     let (transpose, ..) = img.orientation.to_flips();
@@ -119,23 +136,25 @@ impl<'a> Pipeline<'a> {
       (maxwidth, maxheight)
     };
 
-    Pipeline {
+    let ops = PipelineOps {
+      gofloat: gofloat::OpGoFloat::new(&img),
+      demosaic: demosaic::OpDemosaic::new(&img),
+      level: level::OpLevel::new(&img),
+      tolab: colorspaces::OpToLab::new(&img),
+      basecurve: curves::OpBaseCurve::new(&img),
+      fromlab: colorspaces::OpFromLab::new(&img),
+      gamma: gamma::OpGamma::new(&img),
+      transform: transform::OpTransform::new(&img),
+    };
+
+    Ok(Pipeline {
       globals: PipelineGlobals {
         cache: MultiCache::new(1),
         image: img,
         settings: PipelineSettings {maxwidth, maxheight, linear},
       },
-      ops: PipelineOps {
-        gofloat: gofloat::OpGoFloat::new(img),
-        demosaic: demosaic::OpDemosaic::new(img),
-        level: level::OpLevel::new(img),
-        tolab: colorspaces::OpToLab::new(img),
-        basecurve: curves::OpBaseCurve::new(img),
-        fromlab: colorspaces::OpFromLab::new(img),
-        gamma: gamma::OpGamma::new(img),
-        transform: transform::OpTransform::new(img),
-      },
-    }
+      ops,
+    })
   }
 
   pub fn to_serial(&self) -> String {
@@ -147,7 +166,7 @@ impl<'a> Pipeline<'a> {
     serde_yaml::to_string(&serial).unwrap()
   }
 
-  pub fn new_from_serial(img: &RawImage, maxwidth: usize, maxheight: usize, linear: bool, serial: String) -> Pipeline {
+  pub fn new_from_serial(img: RawImage, maxwidth: usize, maxheight: usize, linear: bool, serial: String) -> Pipeline {
     let serial: (PipelineSerialization, PipelineOps) = serde_yaml::from_str(&serial).unwrap();
 
     Pipeline {
@@ -190,5 +209,19 @@ impl<'a> Pipeline<'a> {
       bufin = hash;
     });
     self.globals.cache.get(&bufin).unwrap()
+  }
+
+  pub fn output_8bit(&mut self) -> Result<SRGBImage, String> {
+    let buffer = self.run();
+    let mut image = vec![0 as u8; buffer.width*buffer.height*3];
+    for (o, i) in image.chunks_mut(1).zip(buffer.data.iter()) {
+      o[0] = (i*255.0).max(0.0).min(255.0) as u8;
+    }
+
+    Ok(SRGBImage{
+      width: buffer.width,
+      height: buffer.height,
+      data: image,
+    })
   }
 }

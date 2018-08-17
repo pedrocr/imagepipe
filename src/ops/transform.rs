@@ -3,7 +3,7 @@ use opbasics::*;
 use std::mem;
 use std::usize;
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct OpTransform {
   pub orientation: Orientation,
 }

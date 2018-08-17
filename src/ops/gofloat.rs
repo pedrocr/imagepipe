@@ -1,6 +1,6 @@
 use opbasics::*;
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct OpGoFloat {
   pub width: usize,
   pub height: usize,
@@ -27,7 +27,7 @@ impl OpGoFloat {
 impl<'a> ImageOp<'a> for OpGoFloat {
   fn name(&self) -> &str {"gofloat"}
   fn run(&self, pipeline: &mut PipelineGlobals, _inid: BufHash, outid: BufHash) {
-    let img = pipeline.image;
+    let img = &pipeline.image;
     let x = self.x;
     let y = self.y;
 

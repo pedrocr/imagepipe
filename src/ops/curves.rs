@@ -2,7 +2,7 @@ use opbasics::*;
 
 use std::cmp;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct OpBaseCurve {
   pub points: Vec<(f32, f32)>,
 }
