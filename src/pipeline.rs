@@ -26,11 +26,11 @@ pub struct SRGBImage {
   pub data: Vec<u8>,
 }
 
-fn do_timing<O, F: FnMut() -> O>(_name: &str, mut closure: F) -> O {
-  //let from_time = time::precise_time_ns();
+fn do_timing<O, F: FnMut() -> O>(name: &str, mut closure: F) -> O {
+  let from_time = time::precise_time_ns();
   let ret = closure();
-  //let to_time = time::precise_time_ns();
-  //println!("{} ms for '{}'", (to_time - from_time)/1000000, _name);
+  let to_time = time::precise_time_ns();
+  println!("{} ms for '{}'", (to_time - from_time)/1000000, name);
 
   ret
 }
@@ -222,7 +222,7 @@ impl Pipeline {
     // Do the operations, starting for the last we have a cached buffer for
     all_ops!(self.ops, |ref op, i| {
       if i >= startpos {
-        bufin = op.run(&self.globals, bufin.clone());
+        bufin = do_timing(op.name(), ||op.run(&self.globals, bufin.clone()));
         if let Some(cache) = cache {
           cache.put_arc(ophashes[i], bufin.clone(), 1);
         }
