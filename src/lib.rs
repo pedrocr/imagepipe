@@ -4,7 +4,9 @@ extern crate rawloader;
 extern crate image;
 
 mod buffer;
+pub use buffer::OpBuffer;
 mod hasher;
+pub use hasher::BufHash;
 mod ops;
 mod opbasics;
 mod pipeline;
