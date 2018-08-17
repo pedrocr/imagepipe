@@ -12,12 +12,10 @@ impl<'a> OpGamma {
 
 impl<'a> ImageOp<'a> for OpGamma {
   fn name(&self) -> &str {"gamma"}
-  fn run(&self, pipeline: &mut PipelineGlobals, inid: BufHash, outid: BufHash) {
+  fn run(&self, pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
     if pipeline.settings.linear {
-      pipeline.cache.alias(inid, outid);
+      buf
     } else {
-      let mut buf = (*pipeline.cache.get(&inid).unwrap()).clone();
-
       let g: f32 = 0.45;
       let f: f32 = 0.099;
       let min: f32 = 0.018;
@@ -34,13 +32,11 @@ impl<'a> ImageOp<'a> for OpGamma {
         }
       }
 
-      buf.mutate_lines(&(|line: &mut [f32], _| {
+      Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
         for pix in line.chunks_mut(1) {
           pix[0] = glookup[(pix[0].max(0.0)*(maxvals as f32)).min(maxvals as f32) as usize];
         }
-      }));
-
-      pipeline.cache.put(outid, buf, 1);
+      })))
     }
   }
 }

@@ -15,11 +15,10 @@ impl OpToLab {
 
 impl<'a> ImageOp<'a> for OpToLab {
   fn name(&self) -> &str {"to_lab"}
-  fn run(&self, pipeline: &mut PipelineGlobals, inid: BufHash, outid: BufHash) {
-    let buf = pipeline.cache.get(&inid).unwrap();
+  fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
     let cmatrix = self.cam_to_xyz;
 
-    let buf = buf.process_into_new(3, &(|outb: &mut [f32], inb: &[f32]| {
+    Arc::new(buf.process_into_new(3, &(|outb: &mut [f32], inb: &[f32]| {
       for (pixin, pixout) in inb.chunks(4).zip(outb.chunks_mut(3)) {
         let r = pixin[0];
         let g = pixin[1];
@@ -36,9 +35,7 @@ impl<'a> ImageOp<'a> for OpToLab {
         pixout[1] = a;
         pixout[2] = b;
       }
-    }));
-
-    pipeline.cache.put(outid, buf, 1);
+    })))
   }
 }
 
@@ -54,11 +51,10 @@ impl OpFromLab {
 
 impl<'a> ImageOp<'a> for OpFromLab {
   fn name(&self) -> &str {"from_lab"}
-  fn run(&self, pipeline: &mut PipelineGlobals, inid: BufHash, outid: BufHash) {
-    let mut buf = (*pipeline.cache.get(&inid).unwrap()).clone();
+  fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
     let cmatrix = xyz_to_rec709_matrix();
 
-    buf.mutate_lines(&(|line: &mut [f32], _| {
+    Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
       for pix in line.chunks_mut(3) {
         let l = pix[0];
         let a = pix[1];
@@ -74,9 +70,7 @@ impl<'a> ImageOp<'a> for OpFromLab {
         pix[1] = g;
         pix[2] = b;
       }
-    }));
-
-    pipeline.cache.put(outid, buf, 1);
+    })))
   }
 }
 

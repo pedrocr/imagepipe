@@ -15,9 +15,7 @@ impl OpDemosaic {
 
 impl<'a> ImageOp<'a> for OpDemosaic {
   fn name(&self) -> &str {"demosaic"}
-  fn run(&self, pipeline: &mut PipelineGlobals, inid: BufHash, outid: BufHash) {
-    let buf = pipeline.cache.get(&inid).unwrap();
-
+  fn run(&self, pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
     let (scale, nwidth, nheight) = if pipeline.settings.maxwidth == 0 || pipeline.settings.maxheight == 0 {
       (1.0, buf.width, buf.height)
     } else {
@@ -42,26 +40,23 @@ impl<'a> ImageOp<'a> for OpDemosaic {
 
     if scale <= 1.0 && buf.colors == 4 {
       // We want full size and the image is already 4 color, pass it through
-      pipeline.cache.alias(inid, outid);
+      buf
     } else if buf.colors == 4 {
       // Scale down a 4 colour image
-      let buf = scale_down(&buf, nwidth, nheight);
-      pipeline.cache.put(outid, buf, 1);
+      Arc::new(scale_down(&buf, nwidth, nheight))
     } else if scale >= minscale {
       // We're scaling down enough that each pixel has all four colors under it so do the
       // demosaic and scale down in one go
-      let buf = scaled(cfa, &buf, nwidth, nheight);
-      pipeline.cache.put(outid, buf, 1);
+      Arc::new(scaled(cfa, &buf, nwidth, nheight))
     } else {
       // We're in a close to full scale output that needs full demosaic and possibly
       // minimal scale down
       let fullsize = full(cfa, &buf);
-      let buf = if scale > 1.0 {
-        scale_down(&fullsize, nwidth, nheight)
+      if scale > 1.0 {
+        Arc::new(scale_down(&fullsize, nwidth, nheight))
       } else {
-        fullsize
-      };
-      pipeline.cache.put(outid, buf, 1);
+        Arc::new(fullsize)
+      }
     }
   }
 }

@@ -10,6 +10,15 @@ pub struct OpBuffer {
 }
 
 impl OpBuffer {
+  pub fn default() -> OpBuffer {
+    OpBuffer {
+      width: 0,
+      height: 0,
+      colors: 0,
+      data: Vec::new(),
+    }
+  }
+
   pub fn new(width: usize, height: usize, colors: usize) -> OpBuffer {
     OpBuffer {
       width: width,
@@ -25,6 +34,16 @@ impl OpBuffer {
     self.data.par_chunks_mut(self.width*self.colors).enumerate().for_each(|(row, line)| {
       closure(line, row);
     });
+  }
+
+  pub fn mutate_lines_copying<F>(&self, closure: &F) -> OpBuffer
+    where F : Fn(&mut [f32], usize)+Sync {
+
+    let mut buf = self.clone();
+    buf.data.par_chunks_mut(self.width*self.colors).enumerate().for_each(|(row, line)| {
+      closure(line, row);
+    });
+    buf
   }
 
   pub fn process_into_new<F>(&self, colors: usize, closure: &F) -> OpBuffer

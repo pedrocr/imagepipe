@@ -18,13 +18,11 @@ impl OpTransform {
 
 impl<'a> ImageOp<'a> for OpTransform {
   fn name(&self) -> &str {"transform"}
-  fn run(&self, pipeline: &mut PipelineGlobals, inid: BufHash, outid: BufHash) {
+  fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
     if self.orientation == Orientation::Normal || self.orientation == Orientation::Unknown {
-      pipeline.cache.alias(inid, outid);
+      buf
     } else {
-      let buf = pipeline.cache.get(&inid).unwrap();
-      let buf = rotate_buffer(&buf, &self.orientation);
-      pipeline.cache.put(outid, buf, 1);
+      Arc::new(rotate_buffer(&buf, &self.orientation))
     }
   }
 }

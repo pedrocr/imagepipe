@@ -37,7 +37,7 @@ fn do_timing<O, F: FnMut() -> O>(_name: &str, mut closure: F) -> O {
 
 pub trait ImageOp<'a>: Debug+Serialize+Deserialize<'a> {
   fn name(&self) -> &str;
-  fn run(&self, pipeline: &mut PipelineGlobals, inid: BufHash, outid: BufHash);
+  fn run(&self, pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer>;
   fn to_settings(&self) -> String {
     serde_yaml::to_string(self).unwrap()
   }
@@ -63,7 +63,6 @@ impl PipelineSettings{
 
 #[derive(Debug)]
 pub struct PipelineGlobals {
-  pub cache: MultiCache<BufHash, OpBuffer>,
   pub image: RawImage,
   pub settings: PipelineSettings,
 }
@@ -129,6 +128,7 @@ macro_rules! all_ops {
 
 #[derive(Debug)]
 pub struct Pipeline {
+  pub cache: MultiCache<BufHash, OpBuffer>,
   pub globals: PipelineGlobals,
   pub ops: PipelineOps,
 }
@@ -167,8 +167,8 @@ impl Pipeline {
     };
 
     Ok(Pipeline {
+      cache: MultiCache::new(10),
       globals: PipelineGlobals {
-        cache: MultiCache::new(1),
         image: img,
         settings: PipelineSettings {maxwidth, maxheight, linear},
       },
@@ -189,8 +189,8 @@ impl Pipeline {
     let serial: (PipelineSerialization, PipelineOps) = serde_yaml::from_str(&serial).unwrap();
 
     Pipeline {
+      cache: MultiCache::new(1),
       globals: PipelineGlobals {
-        cache: MultiCache::new(1),
         image: img,
         settings: PipelineSettings {maxwidth, maxheight, linear},
       },
@@ -205,29 +205,29 @@ impl Pipeline {
     let mut startpos = 0;
     // Hash the base settings that are potentially used by all operations
     self.globals.settings.hash(&mut hasher);
-    // Now hash op by op
+    // Start with a dummy buffer as gofloat doesn't use it
+    let mut bufin = Arc::new(OpBuffer::default());
+    // Find the hashes of all ops
     all_ops!(self.ops, |ref op, i| {
       op.hash(&mut hasher);
       let result = hasher.result();
       ophashes.push(result);
 
       // Set the latest op for which we already have the calculated buffer
-      if self.globals.cache.contains_key(&result) {
+      if let Some(buffer) = self.cache.get(&result) {
+        bufin = buffer;
         startpos = i+1;
       }
     });
 
-    // Do the operations, starting with a dummy buffer id as gofloat doesn't use it
-    let mut bufin = BufHash::default();
+    // Do the operations, starting for the last we have a cached buffer for
     all_ops!(self.ops, |ref op, i| {
-      let hash = ophashes[i];
-      if i >= startpos { // We're at the point where we need to start calculating ops
-        let globals = &mut self.globals;
-        do_timing(op.name(), ||op.run(globals, bufin, hash));
+      if i >= startpos {
+        bufin = op.run(&self.globals, bufin.clone());
+        self.cache.put_arc(ophashes[i], bufin.clone(), 1);
       }
-      bufin = hash;
     });
-    self.globals.cache.get(&bufin).unwrap()
+    bufin
   }
 
   pub fn output_8bit(&mut self) -> Result<SRGBImage, String> {

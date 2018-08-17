@@ -26,12 +26,12 @@ impl OpGoFloat {
 
 impl<'a> ImageOp<'a> for OpGoFloat {
   fn name(&self) -> &str {"gofloat"}
-  fn run(&self, pipeline: &mut PipelineGlobals, _inid: BufHash, outid: BufHash) {
+  fn run(&self, pipeline: &PipelineGlobals, _buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
     let img = &pipeline.image;
     let x = self.x;
     let y = self.y;
 
-    let buf = match img.data {
+    Arc::new(match img.data {
       RawImageData::Integer(ref data) => {
         if self.cpp == 1 && !self.is_cfa {
           // We're in a monochrome image so turn it into RGB
@@ -102,7 +102,6 @@ impl<'a> ImageOp<'a> for OpGoFloat {
           out
         }
       },
-    };
-    pipeline.cache.put(outid, buf, 1);
+    })
   }
 }

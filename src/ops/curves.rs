@@ -23,19 +23,16 @@ impl OpBaseCurve {
 
 impl<'a> ImageOp<'a> for OpBaseCurve {
   fn name(&self) -> &str {"basecurve"}
-  fn run(&self, pipeline: &mut PipelineGlobals, inid: BufHash, outid: BufHash) {
-    let mut buf = (*pipeline.cache.get(&inid).unwrap()).clone();
+  fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
     let func = SplineFunc::new(self.points.clone());
 
-    buf.mutate_lines(&(|line: &mut [f32], _| {
+    Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
       for pix in line.chunks_mut(3) {
         pix[0] = func.interpolate(pix[0]);
         pix[1] = pix[1];
         pix[2] = pix[2];
       }
-    }));
-
-    pipeline.cache.put(outid, buf, 1);
+    })))
   }
 }
 
