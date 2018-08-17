@@ -13,6 +13,7 @@ use std::fmt::Debug;
 use std::sync::Arc;
 use std::io::Write;
 use std::path::Path;
+use std::hash::{Hash, Hasher};
 
 /// A RawImage processed into a full 8bit sRGB image with levels and gamma
 ///
@@ -86,6 +87,14 @@ impl PartialEq for PipelineOps {
     let mut otherhasher = BufHasher::new();
     otherhasher.from_serialize(other);
     selfhasher.result() == otherhasher.result()
+  }
+}
+impl Eq for PipelineOps {}
+impl Hash for PipelineOps {
+  fn hash<H: Hasher>(&self, state: &mut H) {
+    let mut selfhasher = BufHasher::new();
+    selfhasher.from_serialize(self);
+    selfhasher.result().hash(state);
   }
 }
 
