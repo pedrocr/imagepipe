@@ -128,7 +128,6 @@ macro_rules! all_ops {
 
 #[derive(Debug)]
 pub struct Pipeline {
-  pub cache: MultiCache<BufHash, OpBuffer>,
   pub globals: PipelineGlobals,
   pub ops: PipelineOps,
 }
@@ -167,7 +166,6 @@ impl Pipeline {
     };
 
     Ok(Pipeline {
-      cache: MultiCache::new(10),
       globals: PipelineGlobals {
         image: img,
         settings: PipelineSettings {maxwidth, maxheight, linear},
@@ -189,7 +187,6 @@ impl Pipeline {
     let serial: (PipelineSerialization, PipelineOps) = serde_yaml::from_str(&serial).unwrap();
 
     Pipeline {
-      cache: MultiCache::new(1),
       globals: PipelineGlobals {
         image: img,
         settings: PipelineSettings {maxwidth, maxheight, linear},
@@ -198,7 +195,7 @@ impl Pipeline {
     }
   }
 
-  pub fn run(&mut self) -> Arc<OpBuffer> {
+  pub fn run(&mut self, cache: Option<&MultiCache<BufHash, OpBuffer>>) -> Arc<OpBuffer> {
     // Generate all the hashes for the operations
     let mut hasher = BufHasher::new();
     let mut ophashes = Vec::new();
@@ -214,9 +211,11 @@ impl Pipeline {
       ophashes.push(result);
 
       // Set the latest op for which we already have the calculated buffer
-      if let Some(buffer) = self.cache.get(&result) {
-        bufin = buffer;
-        startpos = i+1;
+      if let Some(cache) = cache {
+        if let Some(buffer) = cache.get(&result) {
+          bufin = buffer;
+          startpos = i+1;
+        }
       }
     });
 
@@ -224,14 +223,16 @@ impl Pipeline {
     all_ops!(self.ops, |ref op, i| {
       if i >= startpos {
         bufin = op.run(&self.globals, bufin.clone());
-        self.cache.put_arc(ophashes[i], bufin.clone(), 1);
+        if let Some(cache) = cache {
+          cache.put_arc(ophashes[i], bufin.clone(), 1);
+        }
       }
     });
     bufin
   }
 
   pub fn output_8bit(&mut self) -> Result<SRGBImage, String> {
-    let buffer = self.run();
+    let buffer = self.run(None);
     let mut image = vec![0 as u8; buffer.width*buffer.height*3];
     for (o, i) in image.chunks_mut(1).zip(buffer.data.iter()) {
       o[0] = (i*255.0).max(0.0).min(255.0) as u8;
