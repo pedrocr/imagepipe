@@ -1,6 +1,6 @@
 use opbasics::*;
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpToLab {
   pub cam_to_xyz: [[f32;4];3],
 }
@@ -42,7 +42,7 @@ impl<'a> ImageOp<'a> for OpToLab {
   }
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpFromLab {
 }
 

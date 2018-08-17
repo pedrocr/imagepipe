@@ -1,6 +1,6 @@
 use opbasics::*;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpDemosaic {
   pub cfa: String,
 }

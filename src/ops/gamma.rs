@@ -1,6 +1,6 @@
 use opbasics::*;
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpGamma {
 }
 
