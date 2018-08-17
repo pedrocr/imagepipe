@@ -16,7 +16,7 @@ pub use rawloader::Orientation;
 
 pub fn simple_decode_8bit<P: AsRef<Path>>(img: P, maxwidth: usize, maxheight: usize) -> Result<SRGBImage, String> {
   if let Ok(mut pipe) = Pipeline::new_from_file(&img, maxwidth, maxheight, false) {
-    if let Ok(img) = pipe.output_8bit() {
+    if let Ok(img) = pipe.output_8bit(None) {
       return Ok(img)
     }
   }
