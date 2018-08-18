@@ -26,6 +26,8 @@ pub struct SRGBImage {
   pub data: Vec<u8>,
 }
 
+pub type PipelineCache = MultiCache<BufHash, OpBuffer>;
+
 fn do_timing<O, F: FnMut() -> O>(name: &str, mut closure: F) -> O {
   let from_time = time::precise_time_ns();
   let ret = closure();
@@ -139,6 +141,10 @@ pub struct PipelineSerialization {
 }
 
 impl Pipeline {
+  pub fn new_cache(size: usize) -> PipelineCache {
+    MultiCache::new(size)
+  }
+
   pub fn new_from_file<P: AsRef<Path>>(path: P, maxwidth: usize, maxheight: usize, linear: bool) -> Result<Pipeline, String> {
     let img = try!(rawloader::decode_file(path).map_err(|err| err.to_string()));
     Self::new_from_rawimage(img, maxwidth, maxheight, linear)
@@ -195,7 +201,7 @@ impl Pipeline {
     }
   }
 
-  pub fn run(&mut self, cache: Option<&MultiCache<BufHash, OpBuffer>>) -> Arc<OpBuffer> {
+  pub fn run(&mut self, cache: Option<&PipelineCache>) -> Arc<OpBuffer> {
     // Generate all the hashes for the operations
     let mut hasher = BufHasher::new();
     let mut ophashes = Vec::new();
@@ -231,7 +237,7 @@ impl Pipeline {
     bufin
   }
 
-  pub fn output_8bit(&mut self, cache: Option<&MultiCache<BufHash, OpBuffer>>) -> Result<SRGBImage, String> {
+  pub fn output_8bit(&mut self, cache: Option<&PipelineCache>) -> Result<SRGBImage, String> {
     let buffer = self.run(cache);
     let mut image = vec![0 as u8; buffer.width*buffer.height*3];
     for (o, i) in image.chunks_mut(1).zip(buffer.data.iter()) {
