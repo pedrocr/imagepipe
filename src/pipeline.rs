@@ -224,7 +224,7 @@ impl Pipeline {
       if i >= startpos {
         bufin = do_timing(op.name(), ||op.run(&self.globals, bufin.clone()));
         if let Some(cache) = cache {
-          cache.put_arc(ophashes[i], bufin.clone(), 1);
+          cache.put_arc(ophashes[i], bufin.clone(), bufin.width*bufin.height*bufin.colors*4);
         }
       }
     });
