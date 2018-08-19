@@ -6,6 +6,8 @@ rust:
 matrix:
   allow_failures:
     - rust: nightly
+before_script:
+  - git clone https://github.com/pedrocr/rawloader.git
 notifications:
   email:
     recipients:
