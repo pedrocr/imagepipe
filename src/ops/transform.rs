@@ -4,14 +4,38 @@ use std::mem;
 use std::usize;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+pub enum Rotation {
+  Normal,
+  Rotate90,
+  Rotate180,
+  Rotate270,
+}
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpTransform {
-  pub orientation: Orientation,
+  pub rotation: Rotation,
+  pub fliph: bool,
+  pub flipv: bool,
 }
 
 impl OpTransform {
   pub fn new(img: &RawImage) -> OpTransform {
+    let (rotation, fliph, flipv) = match img.orientation {
+      Orientation::Normal
+      | Orientation::Unknown      => (Rotation::Normal, false, false),
+      Orientation::VerticalFlip   => (Rotation::Normal, false, true),
+      Orientation::HorizontalFlip => (Rotation::Normal, true, false),
+      Orientation::Rotate180      => (Rotation::Rotate180, false, false),
+      Orientation::Transpose      => (Rotation::Rotate90, false, true),
+      Orientation::Rotate90       => (Rotation::Rotate90, false, false),
+      Orientation::Rotate270      => (Rotation::Rotate270, false, false),
+      Orientation::Transverse     => (Rotation::Rotate270, true, false),
+    };
+
     OpTransform{
-      orientation: img.orientation,
+      rotation,
+      fliph,
+      flipv,
     }
   }
 }
@@ -19,10 +43,21 @@ impl OpTransform {
 impl<'a> ImageOp<'a> for OpTransform {
   fn name(&self) -> &str {"transform"}
   fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
-    if self.orientation == Orientation::Normal || self.orientation == Orientation::Unknown {
+    // Grab back a base orientation
+    let (f1, f2, f3) = match self.rotation {
+      Rotation::Normal    => Orientation::Normal,
+      Rotation::Rotate90  => Orientation::Rotate90,
+      Rotation::Rotate180 => Orientation::Rotate180,
+      Rotation::Rotate270 => Orientation::Rotate270,
+    }.to_flips();
+
+    // Adjust it with the vertical and horizontal flips if that applies
+    let orientation = Orientation::from_flips((f1, f2 ^ self.fliph, f3 ^ self.flipv));
+
+    if orientation == Orientation::Normal || orientation == Orientation::Unknown {
       buf
     } else {
-      Arc::new(rotate_buffer(&buf, &self.orientation))
+      Arc::new(rotate_buffer(&buf, &orientation))
     }
   }
 }

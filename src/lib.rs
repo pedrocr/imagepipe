@@ -6,13 +6,13 @@ extern crate image;
 mod buffer;
 mod hasher;
 mod ops;
+pub use ops::transform::Rotation;
 mod opbasics;
 mod pipeline;
 pub use self::pipeline::*;
 pub use self::ops::*;
 
 use std::path::Path;
-pub use rawloader::Orientation;
 
 pub fn simple_decode_8bit<P: AsRef<Path>>(img: P, maxwidth: usize, maxheight: usize) -> Result<SRGBImage, String> {
   if let Ok(mut pipe) = Pipeline::new_from_file(&img, maxwidth, maxheight, false) {
