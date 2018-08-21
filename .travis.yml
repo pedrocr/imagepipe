@@ -8,6 +8,7 @@ matrix:
     - rust: nightly
 before_script:
   - git clone https://github.com/pedrocr/rawloader.git
+  - git clone https://github.com/pedrocr/multicache.git
 notifications:
   email:
     recipients:
