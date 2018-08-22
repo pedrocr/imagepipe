@@ -13,7 +13,7 @@ use std::fmt::Debug;
 type HashType = self::sha2::Sha256;
 pub type BufHash = [u8;32];
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct BufHasher {
   hash: HashType,
 }
@@ -25,8 +25,8 @@ impl BufHasher {
   }
   pub fn result(&self) -> BufHash {
     let mut result = BufHash::default();
-    for (i, byte) in self.hash.result().into_iter().enumerate() {
-      result[i] = byte;
+    for (i, byte) in self.hash.clone().result().iter().enumerate() {
+      result[i] = *byte;
     }
     result
   }
