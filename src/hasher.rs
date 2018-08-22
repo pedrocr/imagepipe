@@ -1,5 +1,5 @@
-extern crate sha2;
-use self::sha2::Digest;
+extern crate blake2;
+use self::blake2::digest::{Input, VariableOutput};
 
 extern crate bincode;
 extern crate serde;
@@ -10,8 +10,9 @@ use std::io::Write;
 use std::fmt;
 use std::fmt::Debug;
 
-type HashType = self::sha2::Sha256;
-pub type BufHash = [u8;32];
+type HashType = self::blake2::Blake2b;
+const HASHSIZE: usize = 32;
+pub type BufHash = [u8;HASHSIZE];
 
 #[derive(Clone)]
 pub struct BufHasher {
@@ -20,14 +21,13 @@ pub struct BufHasher {
 impl BufHasher {
   pub fn new() -> BufHasher {
     BufHasher {
-      hash: HashType::default(),
+      hash: HashType::new(HASHSIZE).unwrap(),
     }
   }
   pub fn result(&self) -> BufHash {
     let mut result = BufHash::default();
-    for (i, byte) in self.hash.clone().result().iter().enumerate() {
-      result[i] = *byte;
-    }
+    let hash = self.hash.clone();
+    hash.variable_result(&mut result).unwrap();
     result
   }
 }
@@ -39,7 +39,7 @@ impl Debug for BufHasher {
 
 impl Write for BufHasher {
   fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-    self.hash.input(buf);
+    self.hash.process(buf);
     Ok(buf.len())
   }
   fn flush(&mut self) -> std::io::Result<()> {Ok(())}
