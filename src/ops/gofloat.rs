@@ -6,7 +6,6 @@ pub struct OpGoFloat {
   pub height: usize,
   pub x: usize,
   pub y: usize,
-  pub cpp: usize,
   pub is_cfa: bool,
 }
 
@@ -18,7 +17,6 @@ impl OpGoFloat {
       height: img.height - img.crops[0] - img.crops[2],
       x: img.crops[3],
       y: img.crops[0],
-      cpp: img.cpp,
       is_cfa: img.cfa.is_valid(),
     }
   }
@@ -33,7 +31,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
 
     Arc::new(match img.data {
       RawImageData::Integer(ref data) => {
-        if self.cpp == 1 && !self.is_cfa {
+        if img.cpp == 1 && !self.is_cfa {
           // We're in a monochrome image so turn it into RGB
           let mut out = OpBuffer::new(self.width, self.height, 4);
           out.mutate_lines(&(|line: &mut [f32], row| {
@@ -45,7 +43,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
             }
           }));
           out
-        } else if self.cpp == 3 {
+        } else if img.cpp == 3 {
           // We're in an RGB image, turn it into four channel
           let mut out = OpBuffer::new(self.width, self.height, 4);
           out.mutate_lines(&(|line: &mut [f32], row| {
@@ -68,7 +66,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
         }
       },
       RawImageData::Float(ref data) => {
-        if self.cpp == 1 && !self.is_cfa {
+        if img.cpp == 1 && !self.is_cfa {
           // We're in a monochrome image so turn it into RGB
           let mut out = OpBuffer::new(self.width, self.height, 4);
           out.mutate_lines(&(|line: &mut [f32], row| {
@@ -80,7 +78,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
             }
           }));
           out
-        } else if self.cpp == 3 {
+        } else if img.cpp == 3 {
           // We're in an RGB image, turn it into four channel
           let mut out = OpBuffer::new(self.width, self.height, 4);
           out.mutate_lines(&(|line: &mut [f32], row| {
