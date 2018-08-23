@@ -62,7 +62,7 @@ impl<'a> ImageOp<'a> for OpDemosaic {
 }
 
 pub fn full(cfa: CFA, buf: &OpBuffer) -> OpBuffer {
-  let mut out = OpBuffer::new(buf.width, buf.height, 4);
+  let mut out = OpBuffer::new(buf.width, buf.height, 4, buf.monochrome);
 
   let offsets3x3: [(isize,isize);9] = [
     (-1,-1), (-1, 0), (-1, 1),
@@ -128,7 +128,7 @@ fn calc_skips(idx: usize, idxmax: usize, skip: f32) -> (usize, usize, f32, f32) 
 }
 
 pub fn scaled(cfa: CFA, buf: &OpBuffer, nwidth: usize, nheight: usize) -> OpBuffer {
-  let mut out = OpBuffer::new(nwidth, nheight, 4);
+  let mut out = OpBuffer::new(nwidth, nheight, 4, buf.monochrome);
 
   let rowskip = (buf.width as f32) / (nwidth as f32);
   let colskip = (buf.height as f32) / (nheight as f32);
@@ -167,7 +167,7 @@ pub fn scaled(cfa: CFA, buf: &OpBuffer, nwidth: usize, nheight: usize) -> OpBuff
 pub fn scale_down(buf: &OpBuffer, nwidth: usize, nheight: usize) -> OpBuffer {
   assert_eq!(buf.colors, 4); // When we're scaling down we're always at 4 cpp
 
-  let mut out = OpBuffer::new(nwidth, nheight, 4);
+  let mut out = OpBuffer::new(nwidth, nheight, 4, buf.monochrome);
   let rowskip = (buf.width as f32) / (nwidth as f32);
   let colskip = (buf.height as f32) / (nheight as f32);
 

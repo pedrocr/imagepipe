@@ -13,11 +13,9 @@ fn from_int4(arr: [u16;4]) -> [f32;4] {
 
 impl OpLevel {
   pub fn new(img: &RawImage) -> OpLevel {
-    let coeffs = if img.is_monochrome() {
-      [1.0, 1.0, 1.0, 1.0]
-    } else if !img.wb_coeffs[0].is_normal() ||
-              !img.wb_coeffs[1].is_normal() ||
-              !img.wb_coeffs[2].is_normal() {
+    let coeffs = if !img.wb_coeffs[0].is_normal() ||
+                    !img.wb_coeffs[1].is_normal() ||
+                    !img.wb_coeffs[2].is_normal() {
       img.neutralwb()
     } else {
       img.wb_coeffs
@@ -42,13 +40,17 @@ impl<'a> ImageOp<'a> for OpLevel {
 
     // Set green multiplier as 1.0
     let unity: f32 = self.wb_coeffs[1];
-    let mul = self.wb_coeffs.iter().map(|x| {
-      if !x.is_normal() { 
-        1.0 
-      } else {
-        *x / unity
-      }
-    }).collect::<Vec<f32>>();
+    let mul = if buf.monochrome {
+      vec![1.0, 1.0, 1.0, 1.0]
+    } else {
+      self.wb_coeffs.iter().map(|x| {
+        if !x.is_normal() {
+          1.0
+        } else {
+          *x / unity
+        }
+      }).collect::<Vec<f32>>()
+    };
 
     Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
       for pix in line.chunks_mut(4) {

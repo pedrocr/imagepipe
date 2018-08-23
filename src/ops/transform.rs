@@ -100,9 +100,9 @@ fn rotate_buffer(buf: &OpBuffer, orientation: &Orientation) -> OpBuffer {
   let mut out = if transpose {
     mem::swap(&mut width, &mut height);
     mem::swap(&mut x_step, &mut y_step);
-    OpBuffer::new(buf.height, buf.width, 3 as usize)
+    OpBuffer::new(buf.height, buf.width, 3 as usize, buf.monochrome)
   } else {
-    OpBuffer::new(buf.width, buf.height, 3 as usize)
+    OpBuffer::new(buf.width, buf.height, 3 as usize, buf.monochrome)
   };
 
   out.mutate_lines(&(|line: &mut [f32], row| {

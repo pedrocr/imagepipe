@@ -6,6 +6,7 @@ pub struct OpBuffer {
   pub width: usize,
   pub height: usize,
   pub colors: usize,
+  pub monochrome: bool,
   pub data: Vec<f32>,
 }
 
@@ -15,15 +16,17 @@ impl OpBuffer {
       width: 0,
       height: 0,
       colors: 0,
+      monochrome: false,
       data: Vec::new(),
     }
   }
 
-  pub fn new(width: usize, height: usize, colors: usize) -> OpBuffer {
+  pub fn new(width: usize, height: usize, colors: usize, monochrome: bool) -> OpBuffer {
     OpBuffer {
       width: width,
       height: height,
       colors: colors,
+      monochrome,
       data: vec![0.0; width*height*(colors as usize)],
     }
   }
@@ -49,7 +52,7 @@ impl OpBuffer {
   pub fn process_into_new<F>(&self, colors: usize, closure: &F) -> OpBuffer
     where F : Fn(&mut [f32], &[f32])+Sync {
 
-    let mut out = OpBuffer::new(self.width, self.height, colors);
+    let mut out = OpBuffer::new(self.width, self.height, colors, self.monochrome);
     out.data.par_chunks_mut(out.width*out.colors).enumerate().for_each(|(row, line)| {
       closure(line, &self.data[self.width*self.colors*row..]);
     });
@@ -85,6 +88,7 @@ impl OpBuffer {
       width: width,
       height: height,
       colors: colors,
+      monochrome: false,
       data: pixel_data,
     }
   }

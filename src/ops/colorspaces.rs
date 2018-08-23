@@ -16,7 +16,14 @@ impl OpToLab {
 impl<'a> ImageOp<'a> for OpToLab {
   fn name(&self) -> &str {"to_lab"}
   fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
-    let cmatrix = self.cam_to_xyz;
+    let cmatrix = if buf.monochrome {
+      // Monochrome means we are already in sRGB D65
+      [[0.4124564, 0.3575761, 0.1804375, 0.0],
+       [0.2126729, 0.7151522, 0.0721750, 0.0],
+       [0.0193339, 0.1191920, 0.9503041, 0.0]]
+    } else {
+      self.cam_to_xyz
+    };
 
     Arc::new(buf.process_into_new(3, &(|outb: &mut [f32], inb: &[f32]| {
       for (pixin, pixout) in inb.chunks(4).zip(outb.chunks_mut(3)) {
