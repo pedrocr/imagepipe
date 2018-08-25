@@ -11,6 +11,23 @@ fn from_int4(arr: [u16;4]) -> [f32;4] {
   [arr[0] as f32, arr[1] as f32, arr[2] as f32, arr[3] as f32]
 }
 
+fn normalize_wbs(vals: [f32;4]) -> [f32;4] {
+  // Set green multiplier as 1.0
+  let unity: f32 = vals[1];
+
+  macro_rules! norm {
+    ($val:expr) => {
+      if !$val.is_normal() {
+        1.0
+      } else {
+        $val / unity
+      }
+    };
+  }
+
+  [norm!(vals[0]), norm!(vals[1]), norm!(vals[2]), norm!(vals[3])]
+}
+
 impl OpLevel {
   pub fn new(img: &RawImage) -> OpLevel {
     let coeffs = if !img.wb_coeffs[0].is_normal() ||
@@ -18,7 +35,7 @@ impl OpLevel {
                     !img.wb_coeffs[2].is_normal() {
       img.neutralwb()
     } else {
-      img.wb_coeffs
+      normalize_wbs(img.wb_coeffs)
     };
 
     OpLevel{
@@ -38,18 +55,10 @@ impl<'a> ImageOp<'a> for OpLevel {
       x - mins[i]
     }).collect::<Vec<f32>>();
 
-    // Set green multiplier as 1.0
-    let unity: f32 = self.wb_coeffs[1];
     let mul = if buf.monochrome {
-      vec![1.0, 1.0, 1.0, 1.0]
+      [1.0, 1.0, 1.0, 1.0]
     } else {
-      self.wb_coeffs.iter().map(|x| {
-        if !x.is_normal() {
-          1.0
-        } else {
-          *x / unity
-        }
-      }).collect::<Vec<f32>>()
+      normalize_wbs(self.wb_coeffs)
     };
 
     Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
