@@ -3,6 +3,8 @@ use opbasics::*;
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpToLab {
   pub cam_to_xyz: [[f32;4];3],
+  pub cam_to_xyz_normalized: [[f32;4];3],
+  pub xyz_to_cam: [[f32;3];4],
   pub wb_coeffs: [f32;4],
 }
 
@@ -35,8 +37,36 @@ impl OpToLab {
 
     OpToLab{
       cam_to_xyz: img.cam_to_xyz(),
+      cam_to_xyz_normalized: img.cam_to_xyz_normalized(),
+      xyz_to_cam: img.xyz_to_cam,
       wb_coeffs: coeffs,
     }
+  }
+
+  pub fn set_temp(&mut self, temp: f32, tint: f32) {
+    let xyz = temp_to_xyz(temp);
+    let xyz = [xyz[0], xyz[1]/tint, xyz[2]];
+    for i in 0..4 {
+      self.wb_coeffs[i] = 0.0;
+      for j in 0..3 {
+        self.wb_coeffs[i] += self.xyz_to_cam[i][j] * xyz[j];
+      }
+      self.wb_coeffs[i] = self.wb_coeffs[i].recip();
+    }
+    self.wb_coeffs = normalize_wbs(self.wb_coeffs);
+  }
+
+  pub fn get_temp(&self) -> (f32, f32) {
+    let mut xyz = [0.0; 3];
+    for i in 0..3 {
+      for j in 0..4 {
+        let mul = self.wb_coeffs[j];
+        if mul > 0.0 {
+          xyz[i] += self.cam_to_xyz[i][j] / mul;
+        }
+      }
+    }
+    xyz_to_temp(xyz)
   }
 }
 
@@ -49,7 +79,7 @@ impl<'a> ImageOp<'a> for OpToLab {
        [0.2126729, 0.7151522, 0.0721750, 0.0],
        [0.0193339, 0.1191920, 0.9503041, 0.0]]
     } else {
-      self.cam_to_xyz
+      self.cam_to_xyz_normalized
     };
 
     let mul = if buf.monochrome {
