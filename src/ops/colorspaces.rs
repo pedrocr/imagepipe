@@ -3,12 +3,39 @@ use opbasics::*;
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpToLab {
   pub cam_to_xyz: [[f32;4];3],
+  pub wb_coeffs: [f32;4],
+}
+
+fn normalize_wbs(vals: [f32;4]) -> [f32;4] {
+  // Set green multiplier as 1.0
+  let unity: f32 = vals[1];
+
+  macro_rules! norm {
+    ($val:expr) => {
+      if !$val.is_normal() {
+        1.0
+      } else {
+        $val / unity
+      }
+    };
+  }
+
+  [norm!(vals[0]), norm!(vals[1]), norm!(vals[2]), norm!(vals[3])]
 }
 
 impl OpToLab {
   pub fn new(img: &RawImage) -> OpToLab {
+    let coeffs = if !img.wb_coeffs[0].is_normal() ||
+                    !img.wb_coeffs[1].is_normal() ||
+                    !img.wb_coeffs[2].is_normal() {
+      normalize_wbs(img.neutralwb())
+    } else {
+      normalize_wbs(img.wb_coeffs)
+    };
+
     OpToLab{
       cam_to_xyz: img.cam_to_xyz(),
+      wb_coeffs: coeffs,
     }
   }
 }
@@ -24,6 +51,18 @@ impl<'a> ImageOp<'a> for OpToLab {
     } else {
       self.cam_to_xyz
     };
+
+    let mul = if buf.monochrome {
+      [1.0, 1.0, 1.0, 1.0]
+    } else {
+      normalize_wbs(self.wb_coeffs)
+    };
+
+    let cmatrix = [
+      [cmatrix[0][0] * mul[0], cmatrix[0][1] * mul[1], cmatrix[0][2] * mul[2], cmatrix[0][3] * mul[3]],
+      [cmatrix[1][0] * mul[0], cmatrix[1][1] * mul[1], cmatrix[1][2] * mul[2], cmatrix[1][3] * mul[3]],
+      [cmatrix[2][0] * mul[0], cmatrix[2][1] * mul[1], cmatrix[2][2] * mul[2], cmatrix[2][3] * mul[3]],
+    ];
 
     Arc::new(buf.process_into_new(3, &(|outb: &mut [f32], inb: &[f32]| {
       for (pixin, pixout) in inb.chunks(4).zip(outb.chunks_mut(3)) {

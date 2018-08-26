@@ -7,6 +7,12 @@ pub struct OpGoFloat {
   pub crop_bottom: usize,
   pub crop_left: usize,
   pub is_cfa: bool,
+  pub blacklevels: [f32;4],
+  pub whitelevels: [f32;4],
+}
+
+fn from_int4(arr: [u16;4]) -> [f32;4] {
+  [arr[0] as f32, arr[1] as f32, arr[2] as f32, arr[3] as f32]
 }
 
 impl OpGoFloat {
@@ -18,6 +24,8 @@ impl OpGoFloat {
       crop_bottom: img.crops[2],
       crop_left:   img.crops[3],
       is_cfa: img.cfa.is_valid(),
+      blacklevels: from_int4(img.blacklevels),
+      whitelevels: from_int4(img.whitelevels),
     }
   }
 }
@@ -26,6 +34,12 @@ impl<'a> ImageOp<'a> for OpGoFloat {
   fn name(&self) -> &str {"gofloat"}
   fn run(&self, pipeline: &PipelineGlobals, _buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
     let img = &pipeline.image;
+
+    // Calculate the levels
+    let mins = self.blacklevels;
+    let ranges = self.whitelevels.iter().enumerate().map(|(i, &x)| {
+      x - mins[i]
+    }).collect::<Vec<f32>>();
 
     // Calculate x/y/width/height making sure we get at least a 10x10 "image" to not trip up
     // reasonable assumptions in later ops
@@ -41,9 +55,10 @@ impl<'a> ImageOp<'a> for OpGoFloat {
           let mut out = OpBuffer::new(width, height, 4, true);
           out.mutate_lines(&(|line: &mut [f32], row| {
             for (o, i) in line.chunks_mut(4).zip(data[img.width*(row+y)+x..].chunks(1)) {
-              o[0] = i[0] as f32;
-              o[1] = i[0] as f32;
-              o[2] = i[0] as f32;
+              let val = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
+              o[0] = val;
+              o[1] = val;
+              o[2] = val;
               o[3] = 0.0;
             }
           }));
@@ -53,9 +68,9 @@ impl<'a> ImageOp<'a> for OpGoFloat {
           let mut out = OpBuffer::new(width, height, 4, false);
           out.mutate_lines(&(|line: &mut [f32], row| {
             for (o, i) in line.chunks_mut(4).zip(data[(img.width*(row+y)+x)*3..].chunks(3)) {
-              o[0] = i[0] as f32;
-              o[1] = i[1] as f32;
-              o[2] = i[2] as f32;
+              o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
+              o[1] = ((i[1] as f32 - mins[0]) / ranges[0]).min(1.0);
+              o[2] = ((i[2] as f32 - mins[0]) / ranges[0]).min(1.0);
               o[3] = 0.0;
             }
           }));
@@ -64,7 +79,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
           let mut out = OpBuffer::new(width, height, img.cpp, false);
           out.mutate_lines(&(|line: &mut [f32], row| {
             for (o, i) in line.chunks_mut(1).zip(data[img.width*(row+y)+x..].chunks(1)) {
-              o[0] = i[0] as f32;
+              o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
             }
           }));
           out
@@ -76,9 +91,10 @@ impl<'a> ImageOp<'a> for OpGoFloat {
           let mut out = OpBuffer::new(width, height, 4, true);
           out.mutate_lines(&(|line: &mut [f32], row| {
             for (o, i) in line.chunks_mut(4).zip(data[img.width*(row+y)+x..].chunks(1)) {
-              o[0] = i[0];
-              o[1] = i[0];
-              o[2] = i[0];
+              let val = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
+              o[0] = val;
+              o[1] = val;
+              o[2] = val;
               o[3] = 0.0;
             }
           }));
@@ -88,9 +104,9 @@ impl<'a> ImageOp<'a> for OpGoFloat {
           let mut out = OpBuffer::new(width, height, 4, false);
           out.mutate_lines(&(|line: &mut [f32], row| {
             for (o, i) in line.chunks_mut(4).zip(data[(img.width*(row+y)+x)*3..].chunks(3)) {
-              o[0] = i[0];
-              o[1] = i[1];
-              o[2] = i[2];
+              o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
+              o[1] = ((i[1] as f32 - mins[0]) / ranges[0]).min(1.0);
+              o[2] = ((i[2] as f32 - mins[0]) / ranges[0]).min(1.0);
               o[3] = 0.0;
             }
           }));
@@ -99,7 +115,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
           let mut out = OpBuffer::new(width, height, img.cpp, false);
           out.mutate_lines(&(|line: &mut [f32], row| {
             for (o, i) in line.chunks_mut(1).zip(data[img.width*(row+y)+x..].chunks(1)) {
-              o[0] = i[0];
+              o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
             }
           }));
           out

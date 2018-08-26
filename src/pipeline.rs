@@ -73,7 +73,6 @@ pub struct PipelineGlobals {
 pub struct PipelineOps {
   pub gofloat: gofloat::OpGoFloat,
   pub demosaic: demosaic::OpDemosaic,
-  pub level: level::OpLevel,
   pub tolab: colorspaces::OpToLab,
   pub basecurve: curves::OpBaseCurve,
   pub fromlab: colorspaces::OpFromLab,
@@ -116,7 +115,6 @@ macro_rules! all_ops {
     for_vals!([
       $ops.gofloat,
       $ops.demosaic,
-      $ops.level,
       $ops.tolab,
       $ops.basecurve,
       $ops.fromlab,
@@ -163,7 +161,6 @@ impl Pipeline {
     let ops = PipelineOps {
       gofloat: gofloat::OpGoFloat::new(&img),
       demosaic: demosaic::OpDemosaic::new(&img),
-      level: level::OpLevel::new(&img),
       tolab: colorspaces::OpToLab::new(&img),
       basecurve: curves::OpBaseCurve::new(&img),
       fromlab: colorspaces::OpFromLab::new(&img),
