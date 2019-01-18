@@ -54,7 +54,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
           // We're in a monochrome image so turn it into RGB
           let mut out = OpBuffer::new(width, height, 4, true);
           out.mutate_lines(&(|line: &mut [f32], row| {
-            for (o, i) in line.chunks_mut(4).zip(data[img.width*(row+y)+x..].chunks(1)) {
+            for (o, i) in line.chunks_exact_mut(4).zip(data[img.width*(row+y)+x..].chunks_exact(1)) {
               let val = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
               o[0] = val;
               o[1] = val;
@@ -67,7 +67,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
           // We're in an RGB image, turn it into four channel
           let mut out = OpBuffer::new(width, height, 4, false);
           out.mutate_lines(&(|line: &mut [f32], row| {
-            for (o, i) in line.chunks_mut(4).zip(data[(img.width*(row+y)+x)*3..].chunks(3)) {
+            for (o, i) in line.chunks_exact_mut(4).zip(data[(img.width*(row+y)+x)*3..].chunks_exact(3)) {
               o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
               o[1] = ((i[1] as f32 - mins[0]) / ranges[0]).min(1.0);
               o[2] = ((i[2] as f32 - mins[0]) / ranges[0]).min(1.0);
@@ -78,7 +78,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
         } else {
           let mut out = OpBuffer::new(width, height, img.cpp, false);
           out.mutate_lines(&(|line: &mut [f32], row| {
-            for (o, i) in line.chunks_mut(1).zip(data[img.width*(row+y)+x..].chunks(1)) {
+            for (o, i) in line.chunks_exact_mut(1).zip(data[img.width*(row+y)+x..].chunks_exact(1)) {
               o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
             }
           }));
@@ -90,7 +90,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
           // We're in a monochrome image so turn it into RGB
           let mut out = OpBuffer::new(width, height, 4, true);
           out.mutate_lines(&(|line: &mut [f32], row| {
-            for (o, i) in line.chunks_mut(4).zip(data[img.width*(row+y)+x..].chunks(1)) {
+            for (o, i) in line.chunks_exact_mut(4).zip(data[img.width*(row+y)+x..].chunks_exact(1)) {
               let val = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
               o[0] = val;
               o[1] = val;
@@ -103,7 +103,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
           // We're in an RGB image, turn it into four channel
           let mut out = OpBuffer::new(width, height, 4, false);
           out.mutate_lines(&(|line: &mut [f32], row| {
-            for (o, i) in line.chunks_mut(4).zip(data[(img.width*(row+y)+x)*3..].chunks(3)) {
+            for (o, i) in line.chunks_exact_mut(4).zip(data[(img.width*(row+y)+x)*3..].chunks_exact(3)) {
               o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
               o[1] = ((i[1] as f32 - mins[0]) / ranges[0]).min(1.0);
               o[2] = ((i[2] as f32 - mins[0]) / ranges[0]).min(1.0);
@@ -114,7 +114,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
         } else {
           let mut out = OpBuffer::new(width, height, img.cpp, false);
           out.mutate_lines(&(|line: &mut [f32], row| {
-            for (o, i) in line.chunks_mut(1).zip(data[img.width*(row+y)+x..].chunks(1)) {
+            for (o, i) in line.chunks_exact_mut(1).zip(data[img.width*(row+y)+x..].chunks_exact(1)) {
               o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
             }
           }));

@@ -99,7 +99,7 @@ impl<'a> ImageOp<'a> for OpToLab {
     ];
 
     Arc::new(buf.process_into_new(3, &(|outb: &mut [f32], inb: &[f32]| {
-      for (pixin, pixout) in inb.chunks(4).zip(outb.chunks_mut(3)) {
+      for (pixin, pixout) in inb.chunks_exact(4).zip(outb.chunks_exact_mut(3)) {
         let r = pixin[0];
         let g = pixin[1];
         let b = pixin[2];
@@ -135,7 +135,7 @@ impl<'a> ImageOp<'a> for OpFromLab {
     let cmatrix = xyz_to_rec709_matrix();
 
     Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
-      for pix in line.chunks_mut(3) {
+      for pix in line.chunks_exact_mut(3) {
         let l = pix[0];
         let a = pix[1];
         let b = pix[2];

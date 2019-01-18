@@ -27,7 +27,7 @@ impl<'a> ImageOp<'a> for OpBaseCurve {
     let func = SplineFunc::new(self.points.clone());
 
     Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
-      for pix in line.chunks_mut(3) {
+      for pix in line.chunks_exact_mut(3) {
         pix[0] = func.interpolate(pix[0]);
         pix[1] = pix[1];
         pix[2] = pix[2];

@@ -88,7 +88,7 @@ pub fn full(cfa: CFA, buf: &OpBuffer) -> OpBuffer {
 
   // Now calculate RGBE for each pixel based on the lookup table
   out.mutate_lines(&(|line: &mut [f32], row| {
-    for (col, pix) in line.chunks_mut(4).enumerate() {
+    for (col, pix) in line.chunks_exact_mut(4).enumerate() {
       let ref colors = lookups[row%48][col%48];
       let mut sums = [0f32;5];
       let mut counts = [0f32;5];

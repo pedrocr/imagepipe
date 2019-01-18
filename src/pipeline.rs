@@ -237,7 +237,7 @@ impl Pipeline {
   pub fn output_8bit(&mut self, cache: Option<&PipelineCache>) -> Result<SRGBImage, String> {
     let buffer = self.run(cache);
     let mut image = vec![0 as u8; buffer.width*buffer.height*3];
-    for (o, i) in image.chunks_mut(1).zip(buffer.data.iter()) {
+    for (o, i) in image.chunks_exact_mut(1).zip(buffer.data.iter()) {
       o[0] = (i*255.0).max(0.0).min(255.0) as u8;
     }
 
