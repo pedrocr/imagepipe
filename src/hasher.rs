@@ -10,7 +10,7 @@ use std::io::Write;
 use std::fmt;
 use std::fmt::Debug;
 
-type HashType = self::blake2::Blake2b;
+type HashType = self::blake2::VarBlake2b;
 const HASHSIZE: usize = 32;
 pub type BufHash = [u8;HASHSIZE];
 
@@ -27,7 +27,9 @@ impl BufHasher {
   pub fn result(&self) -> BufHash {
     let mut result = BufHash::default();
     let hash = self.hash.clone();
-    hash.variable_result(&mut result).unwrap();
+    hash.variable_result(|res| {
+      result.copy_from_slice(res);
+    });
     result
   }
 }
@@ -39,7 +41,7 @@ impl Debug for BufHasher {
 
 impl Write for BufHasher {
   fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-    self.hash.process(buf);
+    self.hash.input(buf);
     Ok(buf.len())
   }
   fn flush(&mut self) -> std::io::Result<()> {Ok(())}
