@@ -1,5 +1,13 @@
 use opbasics::*;
 
+static SRGB_D65: [[f32;4];3] = [
+  [0.4124564, 0.3575761, 0.1804375, 0.0],
+  [0.2126729, 0.7151522, 0.0721750, 0.0],
+  [0.0193339, 0.1191920, 0.9503041, 0.0]
+];
+
+static SRGB_D65_XYZ_WHITE: (f32,f32,f32) = (0.94811, 1.000, 1.07304);
+
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpToLab {
   pub cam_to_xyz: [[f32;4];3],
@@ -78,10 +86,8 @@ impl<'a> ImageOp<'a> for OpToLab {
   fn name(&self) -> &str {"to_lab"}
   fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
     let cmatrix = if buf.monochrome {
-      // Monochrome means we are already in sRGB D65
-      [[0.4124564, 0.3575761, 0.1804375, 0.0],
-       [0.2126729, 0.7151522, 0.0721750, 0.0],
-       [0.0193339, 0.1191920, 0.9503041, 0.0]]
+      // Monochrome means we don't need color conversion so it's as if the camera is itself D65 SRGB
+      SRGB_D65
     } else {
       self.cam_to_xyz_normalized
     };
@@ -187,8 +193,7 @@ fn xyz_to_rec709_matrix() -> [[f32;3];3] {
 }
 
 fn xyz_to_lab(x: f32, y: f32, z: f32) -> (f32,f32,f32) {
-  // D65 White
-  let xw = 0.94811; let yw = 1.000; let zw = 1.07304;
+  let (xw, yw, zw) = SRGB_D65_XYZ_WHITE;
 
   let l = 116.0 * labf(y/yw) - 16.0;
   let a = 500.0 * (labf(x/xw) - labf(y/yw));
@@ -226,8 +231,7 @@ fn labf(val: f32) -> f32 {
 }
 
 fn lab_to_xyz(l: f32, a: f32, b: f32) -> (f32,f32,f32) {
-  // D65 White
-  let xw = 0.94811; let yw = 1.000; let zw = 1.07304;
+  let (xw, yw, zw) = SRGB_D65_XYZ_WHITE;
 
   let cl = l * 100.0;
   let ca = (a * 256.0) - 128.0;
