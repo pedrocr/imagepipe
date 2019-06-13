@@ -6,7 +6,7 @@ static SRGB_D65: [[f32;4];3] = [
   [0.0193339, 0.1191920, 0.9503041, 0.0]
 ];
 
-static SRGB_D65_XYZ_WHITE: (f32,f32,f32) = (0.94811, 1.000, 1.07304);
+static SRGB_D65_XYZ_WHITE: (f32,f32,f32) = (0.95047, 1.000, 1.08883);
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpToLab {
