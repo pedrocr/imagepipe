@@ -13,7 +13,7 @@ impl OpBaseCurve {
       points: vec![
         (0.00, 0.00),
         (0.50, 0.60), // Slopes the curve to go from the linear raw to a more natural look
-        (1.00, 1.30), // Tries to protect from ugly color clipping
+        (1.00, 1.00),
       ],
     }
   }

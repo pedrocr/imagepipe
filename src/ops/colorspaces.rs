@@ -98,18 +98,22 @@ impl<'a> ImageOp<'a> for OpToLab {
       normalize_wbs(self.wb_coeffs)
     };
 
-    let cmatrix = [
-      [cmatrix[0][0] * mul[0], cmatrix[0][1] * mul[1], cmatrix[0][2] * mul[2], cmatrix[0][3] * mul[3]],
-      [cmatrix[1][0] * mul[0], cmatrix[1][1] * mul[1], cmatrix[1][2] * mul[2], cmatrix[1][3] * mul[3]],
-      [cmatrix[2][0] * mul[0], cmatrix[2][1] * mul[1], cmatrix[2][2] * mul[2], cmatrix[2][3] * mul[3]],
-    ];
-
     Arc::new(buf.process_into_new(3, &(|outb: &mut [f32], inb: &[f32]| {
       for (pixin, pixout) in inb.chunks_exact(4).zip(outb.chunks_exact_mut(3)) {
-        let r = pixin[0];
-        let g = pixin[1];
-        let b = pixin[2];
-        let e = pixin[3];
+        macro_rules! clip {
+          ($val:expr) => {
+            if $val > 1.0 {
+              1.0
+            } else {
+              $val
+            }
+          };
+        }
+
+        let r = clip!(pixin[0] * mul[0]);
+        let g = clip!(pixin[1] * mul[1]);
+        let b = clip!(pixin[2] * mul[2]);
+        let e = clip!(pixin[3] * mul[3]);
 
         let x = r * cmatrix[0][0] + g * cmatrix[0][1] + b * cmatrix[0][2] + e * cmatrix[0][3];
         let y = r * cmatrix[1][0] + g * cmatrix[1][1] + b * cmatrix[1][2] + e * cmatrix[1][3];
