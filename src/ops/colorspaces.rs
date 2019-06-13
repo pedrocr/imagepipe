@@ -187,8 +187,8 @@ fn xyz_to_rec709_matrix() -> [[f32;3];3] {
 }
 
 fn xyz_to_lab(x: f32, y: f32, z: f32) -> (f32,f32,f32) {
-  // D50 White
-  let xw = 0.9642; let yw = 1.000; let zw = 0.8249;
+  // D65 White
+  let xw = 0.94811; let yw = 1.000; let zw = 1.07304;
 
   let l = 116.0 * labf(y/yw) - 16.0;
   let a = 500.0 * (labf(x/xw) - labf(y/yw));
@@ -226,8 +226,8 @@ fn labf(val: f32) -> f32 {
 }
 
 fn lab_to_xyz(l: f32, a: f32, b: f32) -> (f32,f32,f32) {
-  // D50 White
-  let xw = 0.9642; let yw = 1.000; let zw = 0.8249;
+  // D65 White
+  let xw = 0.94811; let yw = 1.000; let zw = 1.07304;
 
   let cl = l * 100.0;
   let ca = (a * 256.0) - 128.0;
