@@ -21,11 +21,11 @@ blake2 = "0.8"
 image = "0.21"
 
 [dependencies.rawloader]
-version = "0.35.3"
+version = "0.36.0"
 path = "./rawloader"
 
 [dependencies.multicache]
-version = "0.5.0"
+version = "0.6.0"
 path = "./multicache"
 
 [profile.dev]
