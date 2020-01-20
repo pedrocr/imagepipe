@@ -32,7 +32,7 @@ fn do_timing<O, F: FnMut() -> O>(name: &str, mut closure: F) -> O {
   let from_time = time::PrimitiveDateTime::now();
   let ret = closure();
   let to_time = time::PrimitiveDateTime::now();
-  println!("{} ms for '{}'", (to_time-from_time).whole_milliseconds(), name);
+  debug!("{} ms for '{}'", (to_time-from_time).whole_milliseconds(), name);
 
   ret
 }
