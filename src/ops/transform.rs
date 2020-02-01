@@ -124,7 +124,7 @@ fn rotate_buffer(buf: &OpBuffer, orientation: &Orientation) -> OpBuffer {
 #[cfg(test)]
 mod tests {
   use rawloader::Orientation;
-  use buffer::OpBuffer;
+  use crate::buffer::OpBuffer;
   use super::rotate_buffer;
 
   // Store a colorful capital F as a constant, since it is used in all tests
