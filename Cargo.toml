@@ -10,7 +10,7 @@ license = "LGPL-3.0-only"
 categories = ["multimedia::images"]
 
 [dependencies]
-time = "0.1"
+time = "0.2"
 lazy_static = "1"
 rayon = "1"
 serde = "1"

@@ -31,13 +31,13 @@ fn main() {
   };
   println!("Loading file \"{}\" and saving it as \"{}\"", file, outfile);
 
-  let from_time = time::precise_time_ns();
+  let from_time = time::PrimitiveDateTime::now();
   let image = match rawloader::decode_file(file) {
     Ok(val) => val,
     Err(e) => {error(&e.to_string());unreachable!()},
   };
-  let to_time = time::precise_time_ns();
-  println!("Decoded in {} ms", (to_time - from_time)/1000000);
+  let to_time = time::PrimitiveDateTime::now();
+  println!("Decoded in {} ms", (to_time-from_time).whole_milliseconds());
 
   println!("Found camera \"{}\" model \"{}\"", image.make, image.model);
   println!("Found clean named camera \"{}\" model \"{}\"", image.clean_make, image.clean_model);
