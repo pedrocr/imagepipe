@@ -1,5 +1,5 @@
-use ops::*;
-use opbasics::*;
+use crate::ops::*;
+use crate::opbasics::*;
 
 extern crate rawloader;
 extern crate multicache;
@@ -144,7 +144,7 @@ impl Pipeline {
   }
 
   pub fn new_from_file<P: AsRef<Path>>(path: P, maxwidth: usize, maxheight: usize, linear: bool) -> Result<Pipeline, String> {
-    let img = try!(rawloader::decode_file(path).map_err(|err| err.to_string()));
+    let img = rawloader::decode_file(path).map_err(|err| err.to_string())?;
     Self::new_from_rawimage(img, maxwidth, maxheight, linear)
   }
 

@@ -1,4 +1,4 @@
-use opbasics::*;
+use crate::opbasics::*;
 
 static SRGB_D65: [[f32;4];3] = [
   [0.4124564, 0.3575761, 0.1804375, 0.0],
