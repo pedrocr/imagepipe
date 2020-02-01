@@ -1,6 +1,6 @@
 [package]
 name = "imagepipe"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Pedro Côrte-Real <pedro@pedrocr.net>"]
 description = "An image processing pipeline"
 documentation = "https://docs.rs/imagepipe/"
