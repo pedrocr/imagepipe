@@ -2,7 +2,6 @@
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 extern crate rawloader;
-extern crate image;
 
 mod buffer;
 mod hasher;
@@ -22,15 +21,18 @@ pub fn simple_decode_8bit<P: AsRef<Path>>(img: P, maxwidth: usize, maxheight: us
     }
   }
 
-  if let Ok(img) = image::open(&img) {
-    let rgb = img.to_rgb();
-    let width = rgb.width() as usize;
-    let height = rgb.height() as usize;
-    return Ok(SRGBImage {
-      data: rgb.into_raw(),
-      width: width,
-      height: height,
-    })
+  #[cfg(feature = "image")]
+  {
+    if let Ok(img) = image::open(&img) {
+        let rgb = img.to_rgb();
+        let width = rgb.width() as usize;
+        let height = rgb.height() as usize;
+        return Ok(SRGBImage {
+            data: rgb.into_raw(),
+            width: width,
+            height: height,
+        });
+    }
   }
 
   Err("Don't know how to load this image".to_string())
