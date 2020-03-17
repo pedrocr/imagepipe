@@ -19,7 +19,7 @@ serde_derive = "1"
 serde_yaml = "0.8"
 bincode = "1"
 blake2 = "0.8"
-image = "0.22"
+image = "0.23"
 log = "0.4"
 
 [dependencies.rawloader]
