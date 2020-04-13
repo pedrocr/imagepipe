@@ -1,12 +1,12 @@
 use std::env;
 use std::fs::File;
-use std::error::Error;
-use std::io::prelude::*;
 use std::io::BufWriter;
 use std::time::Instant;
+use image::ColorType;
 
 extern crate imagepipe;
 extern crate rawloader;
+extern crate image;
 
 fn usage() {
   println!("converter <file> [outfile]");
@@ -57,14 +57,15 @@ fn main() {
 
   let uf = match File::create(outfile) {
     Ok(val) => val,
-    Err(e) => {error(e.description());unreachable!()},
+    Err(e) => {
+      error(format!("Error: {}", e).as_ref());
+      unreachable!()
+    }
   };
   let mut f = BufWriter::new(uf);
-  let preamble = format!("P6 {} {} {}\n", decoded.width, decoded.height, 255).into_bytes();
-  if let Err(err) = f.write_all(&preamble) {
-    error(err.description());
-  }
-  if let Err(err) = f.write_all(&decoded.data) {
-    error(err.description());
-  }
+
+  let mut jpg_encoder = image::jpeg::JPEGEncoder::new_with_quality(&mut f, 80);
+  jpg_encoder
+    .encode(&decoded.data, decoded.width as u32, decoded.height as u32, ColorType::RGB(8))
+    .expect("Encoding image in JPEG format failed.");
 }
