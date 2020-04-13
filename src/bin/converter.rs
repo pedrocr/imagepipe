@@ -24,11 +24,11 @@ fn main() {
     usage();
   }
   let file = &args[1];
-  let fileppm = format!("{}.ppm",file);
+  let filejpg = format!("{}.jpg",file);
   let outfile = if args.len() > 2 {
     &args[2]
   } else {
-    &fileppm
+    &filejpg
   };
   println!("Loading file \"{}\" and saving it as \"{}\"", file, outfile);
 
