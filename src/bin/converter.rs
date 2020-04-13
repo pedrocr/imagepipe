@@ -1,9 +1,9 @@
 use std::env;
 use std::fs::File;
 use std::io::BufWriter;
+use std::time::Instant;
 use image::ColorType;
 
-extern crate time;
 extern crate imagepipe;
 extern crate rawloader;
 extern crate image;
@@ -32,13 +32,13 @@ fn main() {
   };
   println!("Loading file \"{}\" and saving it as \"{}\"", file, outfile);
 
-  let from_time = time::PrimitiveDateTime::now();
+  let from_time = Instant::now();
   let image = match rawloader::decode_file(file) {
     Ok(val) => val,
     Err(e) => {error(&e.to_string());unreachable!()},
   };
-  let to_time = time::PrimitiveDateTime::now();
-  println!("Decoded in {} ms", (to_time-from_time).whole_milliseconds());
+  let duration = from_time.elapsed();
+  println!("Decoded in {} ms", duration.as_millis());
 
   println!("Found camera \"{}\" model \"{}\"", image.make, image.model);
   println!("Found clean named camera \"{}\" model \"{}\"", image.clean_make, image.clean_model);
