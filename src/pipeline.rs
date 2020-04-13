@@ -4,7 +4,6 @@ use crate::opbasics::*;
 extern crate rawloader;
 extern crate multicache;
 use self::multicache::MultiCache;
-extern crate time;
 extern crate serde;
 extern crate serde_yaml;
 use self::serde::{Serialize,Deserialize};
@@ -14,6 +13,7 @@ use std::sync::Arc;
 use std::io::Write;
 use std::path::Path;
 use std::hash::{Hash, Hasher};
+use std::time::Instant;
 
 /// A RawImage processed into a full 8bit sRGB image with levels and gamma
 ///
@@ -29,10 +29,10 @@ pub struct SRGBImage {
 pub type PipelineCache = MultiCache<BufHash, OpBuffer>;
 
 fn do_timing<O, F: FnMut() -> O>(name: &str, mut closure: F) -> O {
-  let from_time = time::PrimitiveDateTime::now();
+  let from_time = Instant::now();
   let ret = closure();
-  let to_time = time::PrimitiveDateTime::now();
-  debug!("{} ms for '{}'", (to_time-from_time).whole_milliseconds(), name);
+  let duration = from_time.elapsed();
+  debug!("{} ms for '{}'", duration.as_millis(), name);
 
   ret
 }
