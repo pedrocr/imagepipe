@@ -17,7 +17,7 @@ serde = "1"
 serde_derive = "1"
 serde_yaml = "0.8"
 bincode = "1"
-blake2 = "0.8"
+blake2 = "0.9"
 image = "0.23"
 log = "0.4"
 

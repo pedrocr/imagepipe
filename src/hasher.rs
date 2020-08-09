@@ -1,5 +1,5 @@
 extern crate blake2;
-use self::blake2::digest::{Input, VariableOutput};
+use self::blake2::digest::{Update, VariableOutputDirty};
 
 extern crate bincode;
 extern crate serde;
@@ -26,8 +26,8 @@ impl BufHasher {
   }
   pub fn result(&self) -> BufHash {
     let mut result = BufHash::default();
-    let hash = self.hash.clone();
-    hash.variable_result(|res| {
+    let mut hash = self.hash.clone();
+    hash.finalize_variable_dirty(|res| {
       result.copy_from_slice(res);
     });
     result
@@ -41,7 +41,7 @@ impl Debug for BufHasher {
 
 impl Write for BufHasher {
   fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-    self.hash.input(buf);
+    self.hash.update(buf);
     Ok(buf.len())
   }
   fn flush(&mut self) -> std::io::Result<()> {Ok(())}
