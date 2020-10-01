@@ -64,7 +64,7 @@ fn main() {
   };
   let mut f = BufWriter::new(uf);
 
-  let mut jpg_encoder = image::jpeg::JPEGEncoder::new_with_quality(&mut f, 80);
+  let mut jpg_encoder = image::jpeg::JpegEncoder::new_with_quality(&mut f, 80);
   jpg_encoder
     .encode(&decoded.data, decoded.width as u32, decoded.height as u32, ColorType::Rgb8)
     .expect("Encoding image in JPEG format failed.");
