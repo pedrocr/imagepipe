@@ -23,11 +23,11 @@ log = "0.4"
 
 [dependencies.rawloader]
 version = "0.36.0"
-path = "./rawloader"
+path = "../rawloader"
 
 [dependencies.multicache]
 version = "0.6.0"
-path = "./multicache"
+path = "../multicache"
 
 [profile.dev]
 opt-level = 3
