@@ -1,5 +1,4 @@
-extern crate blake2;
-use self::blake2::digest::{Update, VariableOutputDirty};
+extern crate blake3;
 
 extern crate bincode;
 extern crate serde;
@@ -10,7 +9,7 @@ use std::io::Write;
 use std::fmt;
 use std::fmt::Debug;
 
-type HashType = self::blake2::VarBlake2b;
+type HashType = self::blake3::Hasher;
 const HASHSIZE: usize = 32;
 pub type BufHash = [u8;HASHSIZE];
 
@@ -21,16 +20,11 @@ pub struct BufHasher {
 impl BufHasher {
   pub fn new() -> BufHasher {
     BufHasher {
-      hash: HashType::new(HASHSIZE).unwrap(),
+      hash: HashType::new(),
     }
   }
   pub fn result(&self) -> BufHash {
-    let mut result = BufHash::default();
-    let mut hash = self.hash.clone();
-    hash.finalize_variable_dirty(|res| {
-      result.copy_from_slice(res);
-    });
-    result
+	*self.hash.finalize().as_bytes()
   }
 }
 impl Debug for BufHasher {
