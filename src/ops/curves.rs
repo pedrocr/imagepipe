@@ -4,12 +4,14 @@ use std::cmp;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpBaseCurve {
+  pub exposure: f32,
   pub points: Vec<(f32, f32)>,
 }
 
 impl OpBaseCurve {
   pub fn new(_img: &RawImage) -> OpBaseCurve {
     OpBaseCurve{
+      exposure: 0.0,
       points: vec![
         (0.00, 0.00),
         (0.50, 0.60), // Slopes the curve to go from the linear raw to a more natural look
@@ -22,7 +24,9 @@ impl OpBaseCurve {
 impl<'a> ImageOp<'a> for OpBaseCurve {
   fn name(&self) -> &str {"basecurve"}
   fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
-    let func = SplineFunc::new(self.points.clone());
+    let func = SplineFunc::new(self.points.iter().map(|(from, to)| {
+	  (*from, to * self.exposure.exp2())
+    }).collect());
 
     Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
       for pix in line.chunks_exact_mut(3) {
