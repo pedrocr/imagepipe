@@ -31,8 +31,6 @@ impl<'a> ImageOp<'a> for OpBaseCurve {
     Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
       for pix in line.chunks_exact_mut(3) {
         pix[0] = func.interpolate(pix[0]);
-        pix[1] = pix[1];
-        pix[2] = pix[2];
       }
     })))
   }
