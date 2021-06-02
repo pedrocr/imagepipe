@@ -3,10 +3,17 @@ use crate::opbasics::*;
 static SRGB_D65: [[f32;4];3] = [
   [0.4124564, 0.3575761, 0.1804375, 0.0],
   [0.2126729, 0.7151522, 0.0721750, 0.0],
-  [0.0193339, 0.1191920, 0.9503041, 0.0]
+  [0.0193339, 0.1191920, 0.9503041, 0.0],
 ];
 
 static SRGB_D65_XYZ_WHITE: (f32,f32,f32) = (0.95047, 1.000, 1.08883);
+
+static XYZ_D65: [[f32;3];4] = [
+  [ 3.2404542, -1.5371385, -0.4985314],
+  [-0.9692660,  1.8760108,  0.0415560],
+  [ 0.0556434, -0.2040259,  1.0572252],
+  [ 0.0, 0.0, 0.0],
+];
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpToLab {
@@ -34,20 +41,32 @@ fn normalize_wbs(vals: [f32;4]) -> [f32;4] {
 }
 
 impl OpToLab {
-  pub fn new(img: &RawImage) -> OpToLab {
-    let coeffs = if !img.wb_coeffs[0].is_normal() ||
-                    !img.wb_coeffs[1].is_normal() ||
-                    !img.wb_coeffs[2].is_normal() {
-      normalize_wbs(img.neutralwb())
-    } else {
-      normalize_wbs(img.wb_coeffs)
-    };
+  pub fn new(img: &ImageSource) -> OpToLab {
+    match img {
+      ImageSource::Raw(img) => {
+        let coeffs = if !img.wb_coeffs[0].is_normal() ||
+                        !img.wb_coeffs[1].is_normal() ||
+                        !img.wb_coeffs[2].is_normal() {
+          normalize_wbs(img.neutralwb())
+        } else {
+          normalize_wbs(img.wb_coeffs)
+        };
 
-    OpToLab{
-      cam_to_xyz: img.cam_to_xyz(),
-      cam_to_xyz_normalized: img.cam_to_xyz_normalized(),
-      xyz_to_cam: img.xyz_to_cam,
-      wb_coeffs: coeffs,
+        OpToLab{
+          cam_to_xyz: img.cam_to_xyz(),
+          cam_to_xyz_normalized: img.cam_to_xyz_normalized(),
+          xyz_to_cam: img.xyz_to_cam,
+          wb_coeffs: coeffs,
+        }
+      },
+      ImageSource::Other(_) => {
+        OpToLab{
+          cam_to_xyz: SRGB_D65,
+          cam_to_xyz_normalized: SRGB_D65,
+          xyz_to_cam: XYZ_D65,
+          wb_coeffs: [1.0, 1.0, 1.0, 0.0],
+        }
+      }
     }
   }
 
@@ -134,7 +153,7 @@ pub struct OpFromLab {
 }
 
 impl OpFromLab {
-  pub fn new(_img: &RawImage) -> OpFromLab {
+  pub fn new(_img: &ImageSource) -> OpFromLab {
     OpFromLab{}
   }
 }

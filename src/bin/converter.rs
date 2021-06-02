@@ -1,7 +1,7 @@
 use std::env;
 use std::fs::File;
 use std::io::BufWriter;
-use std::time::Instant;
+//use std::time::Instant;
 use image::ColorType;
 
 extern crate imagepipe;
@@ -32,6 +32,7 @@ fn main() {
   };
   println!("Loading file \"{}\" and saving it as \"{}\"", file, outfile);
 
+/*
   let from_time = Instant::now();
   let image = match rawloader::decode_file(file) {
     Ok(val) => val,
@@ -49,6 +50,7 @@ fn main() {
   println!("xyz_to_cam is {:?}", image.xyz_to_cam);
   println!("CFA is {:?}", image.cfa);
   println!("crops are {:?}", image.crops);
+*/
 
   let decoded = match imagepipe::simple_decode_8bit(file, 0, 0) {
     Ok(img) => img,

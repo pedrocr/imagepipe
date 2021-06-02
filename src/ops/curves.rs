@@ -9,14 +9,28 @@ pub struct OpBaseCurve {
 }
 
 impl OpBaseCurve {
-  pub fn new(_img: &RawImage) -> OpBaseCurve {
-    OpBaseCurve{
-      exposure: 0.0,
-      points: vec![
-        (0.00, 0.00),
-        (0.50, 0.60), // Slopes the curve to go from the linear raw to a more natural look
-        (1.00, 1.00),
-      ],
+  pub fn new(img: &ImageSource) -> OpBaseCurve {
+    match img {
+      ImageSource::Raw(_) => {
+        OpBaseCurve{
+          exposure: 0.0,
+          points: vec![
+            (0.00, 0.00),
+            (0.50, 0.60), // Slopes the curve to go from the linear raw to a more natural look
+            (1.00, 1.00),
+          ],
+        }
+      },
+      ImageSource::Other(_) => {
+        OpBaseCurve{
+          exposure: 0.0,
+          points: vec![
+            (0.00, 0.00),
+            (0.50, 0.50),
+            (1.00, 1.00),
+          ],
+        }
+      }
     }
   }
 }

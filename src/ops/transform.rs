@@ -19,23 +19,34 @@ pub struct OpTransform {
 }
 
 impl OpTransform {
-  pub fn new(img: &RawImage) -> OpTransform {
-    let (rotation, fliph, flipv) = match img.orientation {
-      Orientation::Normal
-      | Orientation::Unknown      => (Rotation::Normal, false, false),
-      Orientation::VerticalFlip   => (Rotation::Normal, false, true),
-      Orientation::HorizontalFlip => (Rotation::Normal, true, false),
-      Orientation::Rotate180      => (Rotation::Rotate180, false, false),
-      Orientation::Transpose      => (Rotation::Rotate90, false, true),
-      Orientation::Rotate90       => (Rotation::Rotate90, false, false),
-      Orientation::Rotate270      => (Rotation::Rotate270, false, false),
-      Orientation::Transverse     => (Rotation::Rotate270, true, false),
-    };
+  pub fn new(img: &ImageSource) -> OpTransform {
+    match img {
+      ImageSource::Raw(img) => {
+        let (rotation, fliph, flipv) = match img.orientation {
+          Orientation::Normal
+          | Orientation::Unknown      => (Rotation::Normal, false, false),
+          Orientation::VerticalFlip   => (Rotation::Normal, false, true),
+          Orientation::HorizontalFlip => (Rotation::Normal, true, false),
+          Orientation::Rotate180      => (Rotation::Rotate180, false, false),
+          Orientation::Transpose      => (Rotation::Rotate90, false, true),
+          Orientation::Rotate90       => (Rotation::Rotate90, false, false),
+          Orientation::Rotate270      => (Rotation::Rotate270, false, false),
+          Orientation::Transverse     => (Rotation::Rotate270, true, false),
+        };
 
-    OpTransform{
-      rotation,
-      fliph,
-      flipv,
+        OpTransform{
+          rotation,
+          fliph,
+          flipv,
+        }
+      },
+      ImageSource::Other(_) => {
+        OpTransform{
+          rotation: Rotation::Normal,
+          fliph: false,
+          flipv: false,
+        }
+      }
     }
   }
 }

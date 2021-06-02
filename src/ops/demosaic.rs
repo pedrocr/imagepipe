@@ -6,9 +6,18 @@ pub struct OpDemosaic {
 }
 
 impl OpDemosaic {
-  pub fn new(img: &RawImage) -> OpDemosaic {
-    OpDemosaic{
-      cfa: img.cropped_cfa().to_string(),
+  pub fn new(img: &ImageSource) -> OpDemosaic {
+    match img {
+      ImageSource::Raw(img) => {
+        OpDemosaic{
+          cfa: img.cropped_cfa().to_string(),
+        }
+      },
+      ImageSource::Other(_) => {
+        OpDemosaic{
+          cfa: "".to_string(),
+        }
+      }
     }
   }
 }

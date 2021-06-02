@@ -16,16 +16,31 @@ fn from_int4(arr: [u16;4]) -> [f32;4] {
 }
 
 impl OpGoFloat {
-  pub fn new(img: &RawImage) -> OpGoFloat {
-    // Calculate the resulting width/height and top-left corner after crops
-    OpGoFloat{
-      crop_top:    img.crops[0],
-      crop_right:  img.crops[1],
-      crop_bottom: img.crops[2],
-      crop_left:   img.crops[3],
-      is_cfa: img.cfa.is_valid(),
-      blacklevels: from_int4(img.blacklevels),
-      whitelevels: from_int4(img.whitelevels),
+  pub fn new(img: &ImageSource) -> OpGoFloat {
+    match img {
+      ImageSource::Raw(img) => {
+        // Calculate the resulting width/height and top-left corner after crops
+        OpGoFloat{
+          crop_top:    img.crops[0],
+          crop_right:  img.crops[1],
+          crop_bottom: img.crops[2],
+          crop_left:   img.crops[3],
+          is_cfa: img.cfa.is_valid(),
+          blacklevels: from_int4(img.blacklevels),
+          whitelevels: from_int4(img.whitelevels),
+        }
+      },
+      ImageSource::Other(_) => {
+        OpGoFloat{
+          crop_top:    0,
+          crop_right:  0,
+          crop_bottom: 0,
+          crop_left:   0,
+          is_cfa: false,
+          blacklevels: [0.0, 0.0, 0.0, 0.0],
+          whitelevels: [65535.0, 65535.0, 65535.0, 65535.0],
+        }
+      }
     }
   }
 }
@@ -33,8 +48,19 @@ impl OpGoFloat {
 impl<'a> ImageOp<'a> for OpGoFloat {
   fn name(&self) -> &str {"gofloat"}
   fn run(&self, pipeline: &PipelineGlobals, _buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
-    let img = &pipeline.image;
+    match &pipeline.image {
+      ImageSource::Raw(img) => {
+        self.run_raw(img)
+      },
+      ImageSource::Other(img) => {
+        self.run_other(img)
+      }
+    }
+  }
+}
 
+impl OpGoFloat {
+  fn run_raw(&self, img: &RawImage) -> Arc<OpBuffer> {
     // Calculate the levels
     let mins = self.blacklevels;
     let ranges = self.whitelevels.iter().enumerate().map(|(i, &x)| {
@@ -122,5 +148,36 @@ impl<'a> ImageOp<'a> for OpGoFloat {
         }
       },
     })
+  }
+
+  fn run_other(&self, img: &OtherImage) -> Arc<OpBuffer> {
+    // Calculate the levels
+    let mins = self.blacklevels;
+    let ranges = self.whitelevels.iter().enumerate().map(|(i, &x)| {
+      x - mins[i]
+    }).collect::<Vec<f32>>();
+
+    // Calculate x/y/width/height making sure we get at least a 10x10 "image" to not trip up
+    // reasonable assumptions in later ops
+    let owidth = img.width() as usize;
+    let oheight = img.height() as usize;
+    let x = cmp::min(self.crop_left, owidth-10);
+    let y = cmp::min(self.crop_top, oheight-10);
+    let width = owidth - cmp::min(self.crop_left + self.crop_right, owidth-10);
+    let height = oheight - cmp::min(self.crop_top + self.crop_bottom, oheight-10);
+    let data = img.clone().into_raw();
+
+    // We're in an RGB image, turn it into four channel
+    let mut out = OpBuffer::new(width, height, 4, false);
+    out.mutate_lines(&(|line: &mut [f32], row| {
+      for (o, i) in line.chunks_exact_mut(4).zip(data[(owidth*(row+y)+x)*3..].chunks_exact(3)) {
+        o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
+        o[1] = ((i[1] as f32 - mins[0]) / ranges[0]).min(1.0);
+        o[2] = ((i[2] as f32 - mins[0]) / ranges[0]).min(1.0);
+        o[3] = 0.0;
+      }
+    }));
+
+    Arc::new(out)
   }
 }

@@ -5,7 +5,7 @@ pub struct OpGamma {
 }
 
 impl<'a> OpGamma {
-  pub fn new(_img: &RawImage) -> OpGamma {
+  pub fn new(_img: &ImageSource) -> OpGamma {
     OpGamma{}
   }
 }

@@ -8,6 +8,9 @@ extern crate serde;
 extern crate serde_yaml;
 use self::serde::{Serialize,Deserialize};
 
+extern crate image;
+use image::{ImageBuffer,Rgb};
+
 use std::fmt::Debug;
 use std::sync::Arc;
 use std::io::Write;
@@ -27,6 +30,13 @@ pub struct SRGBImage {
 }
 
 pub type PipelineCache = MultiCache<BufHash, OpBuffer>;
+pub type OtherImage = ImageBuffer<Rgb<u16>, Vec<u16>>;
+
+#[derive(Debug, Clone)]
+pub enum ImageSource {
+  Raw(RawImage),
+  Other(OtherImage),
+}
 
 fn do_timing<O, F: FnMut() -> O>(name: &str, mut closure: F) -> O {
   let from_time = Instant::now();
@@ -65,7 +75,7 @@ impl PipelineSettings{
 
 #[derive(Debug)]
 pub struct PipelineGlobals {
-  pub image: RawImage,
+  pub image: ImageSource,
   pub settings: PipelineSettings,
 }
 
@@ -144,14 +154,30 @@ impl Pipeline {
   }
 
   pub fn new_from_file<P: AsRef<Path>>(path: P, maxwidth: usize, maxheight: usize, linear: bool) -> Result<Pipeline, String> {
-    let img = rawloader::decode_file(path).map_err(|err| err.to_string())?;
-    Self::new_from_rawimage(img, maxwidth, maxheight, linear)
+    if let Ok(img) = rawloader::decode_file(&path) {
+      return Self::new_from_source(ImageSource::Raw(img), maxwidth, maxheight, linear);
+    }
+    if let Ok(img) = image::open(&path) {
+      let rgb = img.to_rgb16();
+      return Self::new_from_source(ImageSource::Other(rgb), maxwidth, maxheight, linear);
+    }
+
+    Err("imagepipe: Don't know how to decode image".to_string())
   }
 
-  pub fn new_from_rawimage(img: RawImage, maxwidth: usize, maxheight: usize, linear: bool) -> Result<Pipeline, String> {
+  pub fn new_from_source(img: ImageSource, maxwidth: usize, maxheight: usize, linear: bool) -> Result<Pipeline, String> {
     // Check if the image's orientation results in a rotation that
     // swaps the maximum width with the maximum height
-    let (transpose, ..) = img.orientation.to_flips();
+    let transpose = match img {
+      ImageSource::Raw(ref img) => {
+        let (transpose, ..) = img.orientation.to_flips();
+        transpose
+      },
+      ImageSource::Other(_) => {
+        false
+      }
+    };
+
     let (maxwidth, maxheight) = if transpose {
       (maxheight, maxwidth)
     } else {
@@ -186,7 +212,7 @@ impl Pipeline {
     serde_yaml::to_string(&serial).unwrap()
   }
 
-  pub fn new_from_serial(img: RawImage, maxwidth: usize, maxheight: usize, linear: bool, serial: String) -> Pipeline {
+  pub fn new_from_serial(img: ImageSource, maxwidth: usize, maxheight: usize, linear: bool, serial: String) -> Pipeline {
     let serial: (PipelineSerialization, PipelineOps) = serde_yaml::from_str(&serial).unwrap();
 
     Pipeline {

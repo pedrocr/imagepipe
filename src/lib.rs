@@ -16,22 +16,5 @@ pub use self::ops::*;
 use std::path::Path;
 
 pub fn simple_decode_8bit<P: AsRef<Path>>(img: P, maxwidth: usize, maxheight: usize) -> Result<SRGBImage, String> {
-  if let Ok(mut pipe) = Pipeline::new_from_file(&img, maxwidth, maxheight, false) {
-    if let Ok(img) = pipe.output_8bit(None) {
-      return Ok(img)
-    }
-  }
-
-  if let Ok(img) = image::open(&img) {
-    let rgb = img.to_rgb8();
-    let width = rgb.width() as usize;
-    let height = rgb.height() as usize;
-    return Ok(SRGBImage {
-      data: rgb.into_raw(),
-      width: width,
-      height: height,
-    })
-  }
-
-  Err("Don't know how to load this image".to_string())
+  Pipeline::new_from_file(&img, maxwidth, maxheight, false)?.output_8bit(None)
 }
