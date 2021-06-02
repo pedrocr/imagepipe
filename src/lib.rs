@@ -23,7 +23,7 @@ pub fn simple_decode_8bit<P: AsRef<Path>>(img: P, maxwidth: usize, maxheight: us
   }
 
   if let Ok(img) = image::open(&img) {
-    let rgb = img.to_rgb();
+    let rgb = img.to_rgb8();
     let width = rgb.width() as usize;
     let height = rgb.height() as usize;
     return Ok(SRGBImage {
