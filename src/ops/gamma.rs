@@ -20,7 +20,7 @@ impl<'a> ImageOp<'a> for OpGamma {
       let mut glookup: Vec<f32> = vec![0.0; maxvals+1];
       for i in 0..(maxvals+1) {
         let v = (i as f32) / (maxvals as f32);
-        glookup[i] = apply_gamma(v);
+        glookup[i] = apply_srgb_gamma(v);
       }
 
       Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
@@ -29,15 +29,5 @@ impl<'a> ImageOp<'a> for OpGamma {
         }
       })))
     }
-  }
-}
-
-#[inline(always)]
-fn apply_gamma(v: f32) -> f32 {
-  // Apply sRGB gamma
-  if v < 0.0031308 {
-      v * 12.92
-  } else {
-      1.055 * v.powf(1.0 / 2.4) - 0.055
   }
 }

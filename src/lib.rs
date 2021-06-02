@@ -12,6 +12,7 @@ mod opbasics;
 mod pipeline;
 pub use self::pipeline::*;
 pub use self::ops::*;
+pub mod color_conversions;
 
 use std::path::Path;
 

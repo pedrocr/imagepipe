@@ -172,9 +172,9 @@ impl OpGoFloat {
     let mut lookupg = vec![0.0; 1 << 16];
     let mut lookupb = vec![0.0; 1 << 16];
     for i in 0..1<<16 {
-      lookupr[i] = expand_gamma(((i as f32 - mins[0]) / ranges[0]).min(1.0));
-      lookupg[i] = expand_gamma(((i as f32 - mins[1]) / ranges[1]).min(1.0));
-      lookupb[i] = expand_gamma(((i as f32 - mins[2]) / ranges[2]).min(1.0));
+      lookupr[i] = expand_srgb_gamma(((i as f32 - mins[0]) / ranges[0]).min(1.0));
+      lookupg[i] = expand_srgb_gamma(((i as f32 - mins[1]) / ranges[1]).min(1.0));
+      lookupb[i] = expand_srgb_gamma(((i as f32 - mins[2]) / ranges[2]).min(1.0));
     }
 
     // Finally create the RGBA buffer from it
@@ -189,15 +189,5 @@ impl OpGoFloat {
     }));
 
     Arc::new(out)
-  }
-}
-
-#[inline(always)]
-fn expand_gamma(v: f32) -> f32 {
-  // Expand sRGB gamma
-  if v < 0.04045 {
-      v / 12.92
-  } else {
-      ((v + 0.055) / 1.055).powf(2.4)
   }
 }
