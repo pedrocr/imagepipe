@@ -95,8 +95,8 @@ impl OpGoFloat {
           out.mutate_lines(&(|line: &mut [f32], row| {
             for (o, i) in line.chunks_exact_mut(4).zip(data[(img.width*(row+y)+x)*3..].chunks_exact(3)) {
               o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
-              o[1] = ((i[1] as f32 - mins[0]) / ranges[0]).min(1.0);
-              o[2] = ((i[2] as f32 - mins[0]) / ranges[0]).min(1.0);
+              o[1] = ((i[1] as f32 - mins[1]) / ranges[1]).min(1.0);
+              o[2] = ((i[2] as f32 - mins[2]) / ranges[2]).min(1.0);
               o[3] = 0.0;
             }
           }));
@@ -131,8 +131,8 @@ impl OpGoFloat {
           out.mutate_lines(&(|line: &mut [f32], row| {
             for (o, i) in line.chunks_exact_mut(4).zip(data[(img.width*(row+y)+x)*3..].chunks_exact(3)) {
               o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
-              o[1] = ((i[1] as f32 - mins[0]) / ranges[0]).min(1.0);
-              o[2] = ((i[2] as f32 - mins[0]) / ranges[0]).min(1.0);
+              o[1] = ((i[1] as f32 - mins[1]) / ranges[1]).min(1.0);
+              o[2] = ((i[2] as f32 - mins[2]) / ranges[2]).min(1.0);
               o[3] = 0.0;
             }
           }));
@@ -172,8 +172,8 @@ impl OpGoFloat {
     out.mutate_lines(&(|line: &mut [f32], row| {
       for (o, i) in line.chunks_exact_mut(4).zip(data[(owidth*(row+y)+x)*3..].chunks_exact(3)) {
         o[0] = expand_gamma(((i[0] as f32 - mins[0]) / ranges[0]).min(1.0));
-        o[1] = expand_gamma(((i[1] as f32 - mins[0]) / ranges[0]).min(1.0));
-        o[2] = expand_gamma(((i[2] as f32 - mins[0]) / ranges[0]).min(1.0));
+        o[1] = expand_gamma(((i[1] as f32 - mins[1]) / ranges[1]).min(1.0));
+        o[2] = expand_gamma(((i[2] as f32 - mins[2]) / ranges[2]).min(1.0));
         o[3] = 0.0;
       }
     }));
