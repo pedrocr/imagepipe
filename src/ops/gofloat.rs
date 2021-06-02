@@ -167,13 +167,23 @@ impl OpGoFloat {
     let height = oheight - cmp::min(self.crop_top + self.crop_bottom, oheight-10);
     let data = img.clone().into_raw();
 
-    // We're in an RGB image, turn it into four channel
+    // Create complete lookup tables to speed up the transformation
+    let mut lookupr = vec![0.0; 1 << 16];
+    let mut lookupg = vec![0.0; 1 << 16];
+    let mut lookupb = vec![0.0; 1 << 16];
+    for i in 0..1<<16 {
+      lookupr[i] = expand_gamma(((i as f32 - mins[0]) / ranges[0]).min(1.0));
+      lookupg[i] = expand_gamma(((i as f32 - mins[1]) / ranges[1]).min(1.0));
+      lookupb[i] = expand_gamma(((i as f32 - mins[2]) / ranges[2]).min(1.0));
+    }
+
+    // Finally create the RGBA buffer from it
     let mut out = OpBuffer::new(width, height, 4, false);
     out.mutate_lines(&(|line: &mut [f32], row| {
       for (o, i) in line.chunks_exact_mut(4).zip(data[(owidth*(row+y)+x)*3..].chunks_exact(3)) {
-        o[0] = expand_gamma(((i[0] as f32 - mins[0]) / ranges[0]).min(1.0));
-        o[1] = expand_gamma(((i[1] as f32 - mins[1]) / ranges[1]).min(1.0));
-        o[2] = expand_gamma(((i[2] as f32 - mins[2]) / ranges[2]).min(1.0));
+        o[0] = lookupr[i[0] as usize];
+        o[1] = lookupg[i[1] as usize];
+        o[2] = lookupb[i[2] as usize];
         o[3] = 0.0;
       }
     }));
