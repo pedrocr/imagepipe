@@ -74,8 +74,8 @@ impl OpBuffer {
             'B' => (0.0, 0.0, 1.0),
             'O' => (1.0, 1.0, 1.0),
             ' ' => (0.0, 0.0, 0.0),
-            c @ _ => panic!(format!(
-              "Invalid color '{}' sent to rgb expected any of 'RGBO '", c)),
+            c @ _ => panic!(
+              "Invalid color '{}' sent to rgb expected any of 'RGBO '", c),
         };
 
         pixel_data.push(r);
