@@ -171,13 +171,23 @@ impl OpGoFloat {
     let mut out = OpBuffer::new(width, height, 4, false);
     out.mutate_lines(&(|line: &mut [f32], row| {
       for (o, i) in line.chunks_exact_mut(4).zip(data[(owidth*(row+y)+x)*3..].chunks_exact(3)) {
-        o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
-        o[1] = ((i[1] as f32 - mins[0]) / ranges[0]).min(1.0);
-        o[2] = ((i[2] as f32 - mins[0]) / ranges[0]).min(1.0);
+        o[0] = expand_gamma(((i[0] as f32 - mins[0]) / ranges[0]).min(1.0));
+        o[1] = expand_gamma(((i[1] as f32 - mins[0]) / ranges[0]).min(1.0));
+        o[2] = expand_gamma(((i[2] as f32 - mins[0]) / ranges[0]).min(1.0));
         o[3] = 0.0;
       }
     }));
 
     Arc::new(out)
+  }
+}
+
+#[inline(always)]
+fn expand_gamma(v: f32) -> f32 {
+  // Expand sRGB gamma
+  if v < 0.04045 {
+      v / 12.92
+  } else {
+      ((v + 0.055) / 1.055).powf(2.4)
   }
 }
