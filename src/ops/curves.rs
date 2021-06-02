@@ -26,7 +26,6 @@ impl OpBaseCurve {
           exposure: 0.0,
           points: vec![
             (0.00, 0.00),
-            (0.50, 0.50),
             (1.00, 1.00),
           ],
         }
@@ -38,6 +37,10 @@ impl OpBaseCurve {
 impl<'a> ImageOp<'a> for OpBaseCurve {
   fn name(&self) -> &str {"basecurve"}
   fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
+    if self.points.len() <= 2 && self.exposure.abs() < 0.001 {
+      return buf
+    }
+
     let func = SplineFunc::new(self.points.iter().map(|(from, to)| {
 	  (*from, to * self.exposure.exp2())
     }).collect());
