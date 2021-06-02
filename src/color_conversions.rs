@@ -264,12 +264,12 @@ pub fn input16bit(v: u16) -> f32 {
 
 #[inline(always)]
 pub fn output8bit(v: f32) -> u8 {
-  (v * 256.0) as u8
+  (v * 256.0).max(0.0).min(255.0) as u8
 }
 
 #[inline(always)]
 pub fn output16bit(v: f32) -> u16 {
-  (v * 65535.0).round() as u16
+  (v * 65535.0).round().max(0.0).min(65535.0) as u16
 }
 
 #[cfg(test)]
