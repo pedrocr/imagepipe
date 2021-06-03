@@ -9,7 +9,7 @@ extern crate serde_yaml;
 use self::serde::{Serialize,Deserialize};
 
 extern crate image;
-use image::{ImageBuffer,Rgb};
+use image::DynamicImage;
 
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -30,7 +30,7 @@ pub struct SRGBImage {
 }
 
 pub type PipelineCache = MultiCache<BufHash, OpBuffer>;
-pub type OtherImage = ImageBuffer<Rgb<u16>, Vec<u16>>;
+pub type OtherImage = DynamicImage;
 
 #[derive(Debug, Clone)]
 pub enum ImageSource {
@@ -158,8 +158,7 @@ impl Pipeline {
       return Self::new_from_source(ImageSource::Raw(img), maxwidth, maxheight, linear);
     }
     if let Ok(img) = image::open(&path) {
-      let rgb = img.to_rgb16();
-      return Self::new_from_source(ImageSource::Other(rgb), maxwidth, maxheight, linear);
+      return Self::new_from_source(ImageSource::Other(img), maxwidth, maxheight, linear);
     }
 
     Err("imagepipe: Don't know how to decode image".to_string())

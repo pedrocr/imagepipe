@@ -157,6 +157,12 @@ impl OpGoFloat {
       x - mins[i]
     }).collect::<Vec<f32>>();
 
+    // For now just convert to 16bit RGB all images but in the future treating
+    // the cases individually could save some copying.
+    // It's probably simpler to just wait for the image crate to support f32
+    // channels and then just do the conversion with that.
+    let img = img.to_rgb16();
+
     // Calculate x/y/width/height making sure we get at least a 10x10 "image" to not trip up
     // reasonable assumptions in later ops
     let owidth = img.width() as usize;
@@ -165,7 +171,7 @@ impl OpGoFloat {
     let y = cmp::min(self.crop_top, oheight-10);
     let width = owidth - cmp::min(self.crop_left + self.crop_right, owidth-10);
     let height = oheight - cmp::min(self.crop_top + self.crop_bottom, oheight-10);
-    let data = img.clone().into_raw();
+    let data = img.into_raw();
 
     // Create complete lookup tables to speed up the transformation
     let mut lookupr = vec![0.0; 1 << 16];
