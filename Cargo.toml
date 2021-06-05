@@ -22,7 +22,7 @@ image = "0.23"
 log = "0.4"
 
 [dependencies.rawloader]
-version = "0.36.0"
+version = "0.37"
 path = "../rawloader"
 
 [dependencies.multicache]
