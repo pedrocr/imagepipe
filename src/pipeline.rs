@@ -90,6 +90,20 @@ pub struct PipelineOps {
   pub transform: transform::OpTransform,
 }
 
+impl PipelineOps {
+  fn new(img: &ImageSource) -> Self {
+    Self {
+      gofloat: gofloat::OpGoFloat::new(&img),
+      demosaic: demosaic::OpDemosaic::new(&img),
+      tolab: colorspaces::OpToLab::new(&img),
+      basecurve: curves::OpBaseCurve::new(&img),
+      fromlab: colorspaces::OpFromLab::new(&img),
+      gamma: gamma::OpGamma::new(&img),
+      transform: transform::OpTransform::new(&img),
+    }
+  }
+}
+
 impl PartialEq for PipelineOps {
   fn eq(&self, other: &Self) -> bool {
     let mut selfhasher = BufHasher::new();
@@ -185,15 +199,7 @@ impl Pipeline {
       (maxwidth, maxheight)
     };
 
-    let ops = PipelineOps {
-      gofloat: gofloat::OpGoFloat::new(&img),
-      demosaic: demosaic::OpDemosaic::new(&img),
-      tolab: colorspaces::OpToLab::new(&img),
-      basecurve: curves::OpBaseCurve::new(&img),
-      fromlab: colorspaces::OpFromLab::new(&img),
-      gamma: gamma::OpGamma::new(&img),
-      transform: transform::OpTransform::new(&img),
-    };
+    let ops = PipelineOps::new(&img);
 
     Ok(Pipeline {
       globals: PipelineGlobals {
@@ -202,6 +208,10 @@ impl Pipeline {
       },
       ops,
     })
+  }
+
+  pub fn default_ops(&self) -> bool {
+    self.ops == PipelineOps::new(&self.globals.image)
   }
 
   pub fn to_serial(&self) -> String {
@@ -265,6 +275,40 @@ impl Pipeline {
   }
 
   pub fn output_8bit(&mut self, cache: Option<&PipelineCache>) -> Result<SRGBImage, String> {
+    // If the image is 8bit and we haven't changed it yet there's no need to go
+    // through the whole pipeline. Just go straight to 8bit using the image
+    // crate and resize if needed
+    if let ImageSource::Other(ref image) = self.globals.image {
+      if self.default_ops() {
+        return Ok(do_timing("total output_8bit_fastpath()", ||{
+        let maxwidth = self.globals.settings.maxwidth;
+        let maxheight = self.globals.settings.maxheight;
+        if maxwidth != 0 || maxheight != 0 {
+          // we need to resize
+          let maxwidth = if maxwidth == 0 {u32::MAX} else {maxwidth as u32};
+          let maxheight = if maxheight == 0 {u32::MAX} else {maxheight as u32};
+          let image = image.resize(maxwidth, maxheight, image::imageops::FilterType::Lanczos3);
+          let rgb = image.into_rgb8();
+          let (width, height) = (rgb.width() as usize, rgb.height() as usize);
+          SRGBImage{
+            width,
+            height,
+            data: rgb.into_raw(),
+          }
+        } else {
+          // we can output straight from the image
+          let rgb = image.to_rgb8();
+          let (width, height) = (rgb.width() as usize, rgb.height() as usize);
+          SRGBImage{
+            width,
+            height,
+            data: rgb.into_raw(),
+          }
+        }
+        }))
+      }
+    }
+
     do_timing("total output_8bit()", ||{
     let buffer = self.run(cache);
 
