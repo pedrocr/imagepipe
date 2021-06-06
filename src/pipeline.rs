@@ -38,13 +38,18 @@ pub enum ImageSource {
   Other(OtherImage),
 }
 
-fn do_timing<O, F: FnMut() -> O>(name: &str, mut closure: F) -> O {
-  let from_time = Instant::now();
-  let ret = closure();
-  let duration = from_time.elapsed();
-  info!("timing: {:>7} ms for |{}", duration.as_millis(), name);
-
-  ret
+macro_rules! do_timing {
+  ($name:expr, $body:expr) => {
+    {
+      let from_time = Instant::now();
+      let ret = {
+        $body
+      };
+      let duration = from_time.elapsed();
+      info!("timing: {:>7} ms for |{}", duration.as_millis(), $name);
+      ret
+    }
+  }
 }
 
 pub trait ImageOp<'a>: Debug+Serialize+Deserialize<'a> {
@@ -168,15 +173,14 @@ impl Pipeline {
   }
 
   pub fn new_from_file<P: AsRef<Path>>(path: P, maxwidth: usize, maxheight: usize, linear: bool) -> Result<Pipeline, String> {
-    do_timing("total new_from_file()", ||{
-    if let Ok(img) = do_timing("  rawloader", || rawloader::decode_file(&path)) {
-      return Self::new_from_source(ImageSource::Raw(img), maxwidth, maxheight, linear);
+    do_timing!("total new_from_file()", {
+    if let Ok(img) = do_timing!("  rawloader", rawloader::decode_file(&path)) {
+      Self::new_from_source(ImageSource::Raw(img), maxwidth, maxheight, linear)
+    } else if let Ok(img) = do_timing!("  image::open", image::open(&path)) {
+      Self::new_from_source(ImageSource::Other(img), maxwidth, maxheight, linear)
+    } else {
+      Err("imagepipe: Don't know how to decode image".to_string())
     }
-    if let Ok(img) = do_timing("  image::open", || image::open(&path)) {
-      return Self::new_from_source(ImageSource::Other(img), maxwidth, maxheight, linear);
-    }
-
-    Err("imagepipe: Don't know how to decode image".to_string())
     })
   }
 
@@ -236,7 +240,7 @@ impl Pipeline {
   }
 
   pub fn run(&mut self, cache: Option<&PipelineCache>) -> Arc<OpBuffer> {
-    do_timing("  total pipeline", ||{
+    do_timing!("  total pipeline", {
     // Generate all the hashes for the operations
     let mut hasher = BufHasher::new();
     let mut ophashes = Vec::new();
@@ -264,7 +268,7 @@ impl Pipeline {
     all_ops!(self.ops, |ref op, i| {
       if i >= startpos {
         let opstr = "    ".to_string() + op.name();
-        bufin = do_timing(&opstr, ||op.run(&self.globals, bufin.clone()));
+        bufin = do_timing!(&opstr, op.run(&self.globals, bufin.clone()));
         if let Some(cache) = cache {
           cache.put_arc(ophashes[i], bufin.clone(), bufin.width*bufin.height*bufin.colors*4);
         }
@@ -280,15 +284,15 @@ impl Pipeline {
     // crate and resize if needed
     if let ImageSource::Other(ref image) = self.globals.image {
       if self.default_ops() {
-        return Ok(do_timing("total output_8bit_fastpath()", ||{
+        return Ok(do_timing!("total output_8bit_fastpath()", {
         let maxwidth = self.globals.settings.maxwidth;
         let maxheight = self.globals.settings.maxheight;
         if maxwidth != 0 || maxheight != 0 {
           // we need to resize
           let maxwidth = if maxwidth == 0 {u32::MAX} else {maxwidth as u32};
           let maxheight = if maxheight == 0 {u32::MAX} else {maxheight as u32};
-          let image = image.resize(maxwidth, maxheight, image::imageops::FilterType::Lanczos3);
-          let rgb = image.into_rgb8();
+          let image = do_timing!("  image resize", image.resize(maxwidth, maxheight, image::imageops::FilterType::Lanczos3));
+          let rgb = do_timing!("  8 bit conversion", image.into_rgb8());
           let (width, height) = (rgb.width() as usize, rgb.height() as usize);
           SRGBImage{
             width,
@@ -297,7 +301,7 @@ impl Pipeline {
           }
         } else {
           // we can output straight from the image
-          let rgb = image.to_rgb8();
+          let rgb = do_timing!("  8 bit conversion", image.to_rgb8());
           let (width, height) = (rgb.width() as usize, rgb.height() as usize);
           SRGBImage{
             width,
@@ -309,10 +313,10 @@ impl Pipeline {
       }
     }
 
-    do_timing("total output_8bit()", ||{
+    do_timing!("total output_8bit()", {
     let buffer = self.run(cache);
 
-    let image = do_timing("  8 bit conversion", ||{
+    let image = do_timing!("  8 bit conversion", {
       let mut image = vec![0 as u8; buffer.width*buffer.height*3];
       for (o, i) in image.chunks_exact_mut(1).zip(buffer.data.iter()) {
         o[0] = output8bit(*i);
