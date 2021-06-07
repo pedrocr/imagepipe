@@ -9,7 +9,9 @@ pub fn calculate_scaling(width: usize, height: usize, maxwidth: usize, maxheight
     // Do the calculations manually to avoid off-by-one errors from floating point rounding
     let xscale = if maxwidth == 0 {1.0} else {width as f32 / maxwidth as f32};
     let yscale = if maxheight == 0 {1.0} else {height as f32 / maxheight as f32};
-    if yscale > xscale {
+    if yscale <= 1.0 && xscale <= 1.0 {
+      (1.0, width, height)
+    } else if yscale > xscale {
       (yscale, ((width as f32)/yscale) as usize, maxheight)
     } else {
       (xscale, maxwidth, ((height as f32)/xscale) as usize)
