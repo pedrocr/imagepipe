@@ -283,16 +283,23 @@ impl Pipeline {
     // through the whole pipeline. Just go straight to 8bit using the image
     // crate and resize if needed
     if let ImageSource::Other(ref image) = self.globals.image {
-      if self.default_ops() &&
-         self.globals.settings.maxwidth == 0 &&
-         self.globals.settings.maxheight == 0 {
+      if self.default_ops() {
         return Ok(do_timing!("total output_8bit_fastpath()", {
         let rgb = image.to_rgb8();
         let (width, height) = (rgb.width() as usize, rgb.height() as usize);
-        SRGBImage{
+        let out = SRGBImage{
           width,
           height,
           data: rgb.into_raw(),
+        };
+        let (_, nwidth, nheight) = crate::scaling::calculate_scaling(
+          out.width, out.height,
+          self.globals.settings.maxwidth, self.globals.settings.maxheight
+        );
+        if nwidth != out.width || nheight != out.height {
+          crate::scaling::scale_down_srgb(&out, nwidth, nheight)
+        } else {
+          out
         }
         }))
       }

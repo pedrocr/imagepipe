@@ -1,4 +1,5 @@
 use crate::buffer::*;
+use crate::pipeline::SRGBImage;
 use rawloader::CFA;
 
 pub fn calculate_scaling(width: usize, height: usize, maxwidth: usize, maxheight: usize) -> (f32, usize, usize) {
@@ -102,4 +103,45 @@ pub fn scaled_demosaic(cfa: CFA, buf: &OpBuffer, nwidth: usize, nheight: usize) 
   }));
 
   out
+}
+
+pub fn scale_down_srgb(buf: &SRGBImage, nwidth: usize, nheight: usize) -> SRGBImage {
+  let mut out = vec![0; nwidth*nheight*3];
+  let rowskip = (buf.width as f32) / (nwidth as f32);
+  let colskip = (buf.height as f32) / (nheight as f32);
+
+  // Go around the image averaging blocks of pixels
+  for (row,line) in out.chunks_exact_mut(nwidth*3).enumerate() {
+    for col in 0..nwidth {
+      let mut sums: [f32; 3] = [0.0;3];
+      let mut counts: [f32; 3] = [0.0;3];
+      let (fromrow, torow, topfactor, bottomfactor) = calc_skips(row, buf.height, rowskip);
+      for y in fromrow..torow {
+        let (fromcol, tocol, leftfactor, rightfactor) = calc_skips(col, buf.width, colskip);
+        for x in fromcol..tocol {
+          let factor = {
+            (if y == fromrow {topfactor} else if y == torow {bottomfactor} else {1.0}) *
+            (if x == fromcol {leftfactor} else if x == tocol {rightfactor} else {1.0})
+          };
+
+          for c in 0..3 {
+            sums[c] += buf.data[(y*buf.width+x)*3 + c] as f32 * factor;
+            counts[c] += factor;
+          }
+        }
+      }
+
+      for c in 0..3 {
+        if counts[c] > 0.0 {
+          line[col*3+c] = (sums[c] / counts[c]) as u8;
+        }
+      }
+    }
+  }
+
+  SRGBImage {
+    width: nwidth,
+    height: nheight,
+    data: out,
+  }
 }
