@@ -2,6 +2,7 @@ use crate::buffer::*;
 use crate::pipeline::SRGBImage;
 use rawloader::CFA;
 use num_traits::cast::AsPrimitive;
+use rayon::prelude::*;
 
 pub fn calculate_scaling(width: usize, height: usize, maxwidth: usize, maxheight: usize) -> (f32, usize, usize) {
   if maxwidth == 0 && maxheight == 0 {
@@ -42,11 +43,14 @@ fn scale_down_buffer<T>(
   components: usize,
   cfa: Option<&CFA>,
   ) -> Vec<T>
-  where f32: AsPrimitive<T>, T: AsPrimitive<f32> {
+  where f32: AsPrimitive<T>, T: AsPrimitive<f32>, T: Sync+Send {
   let mut out = vec![(0 as f32).as_(); nwidth*nheight*components];
   let rowskip = (width as f32) / (nwidth as f32);
   let colskip = (height as f32) / (nheight as f32);
-  for (row,line) in out.chunks_exact_mut(nwidth*components).enumerate() {
+  // Using rayon to make this multithreaded is 10-15% faster on an i5-6200U which
+  // is useful but not a great speedup for 2 cores 4 threads. It may even make
+  // sense to give this up to not thrash caches.
+  out.par_chunks_exact_mut(nwidth*components).enumerate().for_each(|(row, line)| {
     for col in 0..nwidth {
       let mut sums: [f32; 4] = [0.0;4];
       let mut counts: [f32; 4] = [0.0;4];
@@ -78,7 +82,7 @@ fn scale_down_buffer<T>(
         }
       }
     }
-  }
+  });
   out
 }
 
