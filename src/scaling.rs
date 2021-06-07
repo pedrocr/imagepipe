@@ -1,6 +1,7 @@
 use crate::buffer::*;
 use crate::pipeline::SRGBImage;
 use rawloader::CFA;
+use num_traits::cast::AsPrimitive;
 
 pub fn calculate_scaling(width: usize, height: usize, maxwidth: usize, maxheight: usize) -> (f32, usize, usize) {
   if maxwidth == 0 && maxheight == 0 {
@@ -31,26 +32,8 @@ fn calc_skips(idx: usize, idxmax: usize, skip: f32) -> (usize, usize, f32, f32) 
   (fromback as usize, toforward as usize, fromfactor, tofactor)
 }
 
-trait FromToF32 {
-    fn from_f32(val: f32) -> Self;
-    fn to_f32(&self) -> f32;
-    fn zero() -> Self;
-}
-
-impl FromToF32 for u8 {
-    fn from_f32(val: f32) -> Self { val as u8 }
-    fn to_f32(&self) -> f32 { *self as f32 }
-    fn zero() -> Self { 0 }
-}
-
-impl FromToF32 for f32 {
-    fn from_f32(val: f32) -> Self { val }
-    fn to_f32(&self) -> f32 { *self }
-    fn zero() -> Self { 0.0 }
-}
-
 #[inline(always)]
-fn scale_down_buffer<T: FromToF32 + Copy>(
+fn scale_down_buffer<T>(
   src: &[T],
   width: usize,
   height: usize,
@@ -58,8 +41,9 @@ fn scale_down_buffer<T: FromToF32 + Copy>(
   nheight: usize,
   components: usize,
   cfa: Option<&CFA>,
-  ) -> Vec<T> {
-  let mut out = vec![T::zero(); nwidth*nheight*components];
+  ) -> Vec<T>
+  where f32: AsPrimitive<T>, T: AsPrimitive<f32> {
+  let mut out = vec![(0 as f32).as_(); nwidth*nheight*components];
   let rowskip = (width as f32) / (nwidth as f32);
   let colskip = (height as f32) / (nheight as f32);
   for (row,line) in out.chunks_exact_mut(nwidth*components).enumerate() {
@@ -77,11 +61,11 @@ fn scale_down_buffer<T: FromToF32 + Copy>(
 
             if let Some(cfa) = cfa {
               let c = cfa.color_at(y, x);
-              sums[c] += src[y*width+x].to_f32() * factor;
+              sums[c] += src[y*width+x].as_() * factor;
               counts[c] += factor;
            } else {
               for c in 0..components {
-                sums[c] += src[(y*width+x)*components+c].to_f32() * factor;
+                sums[c] += src[(y*width+x)*components+c].as_() * factor;
                 counts[c] += factor;
               }
            }
@@ -90,7 +74,7 @@ fn scale_down_buffer<T: FromToF32 + Copy>(
 
       for c in 0..components {
         if counts[c] > 0.0 {
-          line[col*components+c] = T::from_f32(sums[c] / counts[c]);
+          line[col*components+c] = (sums[c] / counts[c]).as_();
         }
       }
     }
