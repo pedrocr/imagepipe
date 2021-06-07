@@ -13,7 +13,7 @@ fn usage() {
   std::process::exit(1);
 }
 
-fn error(err: &str) {
+fn error(err: &str) -> ! {
   println!("ERROR: {}", err);
   std::process::exit(2);
 }
@@ -54,14 +54,13 @@ fn main() {
 
   let decoded = match imagepipe::simple_decode_8bit(file, 0, 0) {
     Ok(img) => img,
-    Err(e) => {error(&e);unreachable!()},
+    Err(e) => error(&e),
   };
 
   let uf = match File::create(outfile) {
     Ok(val) => val,
     Err(e) => {
-      error(format!("Error: {}", e).as_ref());
-      unreachable!()
+      error(format!("Error: {}", e).as_ref())
     }
   };
   let mut f = BufWriter::new(uf);
