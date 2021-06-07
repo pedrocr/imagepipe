@@ -25,18 +25,10 @@ impl OpDemosaic {
 impl<'a> ImageOp<'a> for OpDemosaic {
   fn name(&self) -> &str {"demosaic"}
   fn run(&self, pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
-    let (scale, nwidth, nheight) = if pipeline.settings.maxwidth == 0 || pipeline.settings.maxheight == 0 {
-      (1.0, buf.width, buf.height)
-    } else {
-      // Do the calculations manually to avoid off-by-one errors from floating point rounding
-      let xscale = (buf.width as f32) / (pipeline.settings.maxwidth as f32);
-      let yscale = (buf.height as f32) / (pipeline.settings.maxheight as f32);
-      if yscale > xscale {
-        (yscale, ((buf.width as f32)/yscale) as usize, pipeline.settings.maxheight)
-      } else {
-        (xscale, pipeline.settings.maxwidth, ((buf.height as f32)/xscale) as usize)
-      }
-    };
+    let (scale, nwidth, nheight) = crate::scaling::calculate_scaling(
+      buf.width, buf.height,
+      pipeline.settings.maxwidth, pipeline.settings.maxheight
+    );
 
     let cfa = CFA::new(&self.cfa);
     let minscale = match cfa.width {
@@ -52,17 +44,17 @@ impl<'a> ImageOp<'a> for OpDemosaic {
       buf
     } else if buf.colors == 4 {
       // Scale down a 4 colour image
-      Arc::new(scale_down(&buf, nwidth, nheight))
+      Arc::new(crate::scaling::scale_down_opbuf(&buf, nwidth, nheight))
     } else if scale >= minscale {
       // We're scaling down enough that each pixel has all four colors under it so do the
       // demosaic and scale down in one go
-      Arc::new(scaled(cfa, &buf, nwidth, nheight))
+      Arc::new(crate::scaling::scaled_demosaic(cfa, &buf, nwidth, nheight))
     } else {
       // We're in a close to full scale output that needs full demosaic and possibly
       // minimal scale down
       let fullsize = full(cfa, &buf);
       if scale > 1.0 {
-        Arc::new(scale_down(&fullsize, nwidth, nheight))
+        Arc::new(crate::scaling::scale_down_opbuf(&fullsize, nwidth, nheight))
       } else {
         Arc::new(fullsize)
       }
@@ -116,94 +108,6 @@ pub fn full(cfa: CFA, buf: &OpBuffer) -> OpBuffer {
       for c in 0..4 {
         if counts[c] > 0.0 {
           pix[c] = sums[c] / counts[c];
-        }
-      }
-    }
-  }));
-
-  out
-}
-
-fn calc_skips(idx: usize, idxmax: usize, skip: f32) -> (usize, usize, f32, f32) {
-  let from = (idx as f32)*skip;
-  let fromback = from.floor();
-  let fromfactor = 1.0 - (from-fromback).fract();
-
-  let to = ((idx+1) as f32)*skip;
-  let toforward = (idxmax as f32).min(to.ceil());
-  let tofactor = (toforward-to).fract();
-
-  (fromback as usize, toforward as usize, fromfactor, tofactor)
-}
-
-pub fn scaled(cfa: CFA, buf: &OpBuffer, nwidth: usize, nheight: usize) -> OpBuffer {
-  let mut out = OpBuffer::new(nwidth, nheight, 4, buf.monochrome);
-
-  let rowskip = (buf.width as f32) / (nwidth as f32);
-  let colskip = (buf.height as f32) / (nheight as f32);
-
-  // Go around the image averaging blocks of pixels
-  out.mutate_lines(&(|line: &mut [f32], row| {
-    for col in 0..nwidth {
-      let mut sums: [f32; 4] = [0.0;4];
-      let mut counts: [f32; 4] = [0.0;4];
-      let (fromrow, torow, topfactor, bottomfactor) = calc_skips(row, buf.height, rowskip);
-      for y in fromrow..torow {
-        let (fromcol, tocol, leftfactor, rightfactor) = calc_skips(col, buf.width, colskip);
-        for x in fromcol..tocol {
-          let factor = {
-            (if y == fromrow {topfactor} else if y == torow {bottomfactor} else {1.0}) *
-            (if x == fromcol {leftfactor} else if x == tocol {rightfactor} else {1.0})
-          };
-
-          let c = cfa.color_at(y, x);
-          sums[c] += (buf.data[y*buf.width+x] as f32) * factor;
-          counts[c] += factor;
-        }
-      }
-
-      for c in 0..4 {
-        if counts[c] > 0.0 {
-          line[col*4+c] = sums[c] / counts[c];
-        }
-      }
-    }
-  }));
-
-  out
-}
-
-pub fn scale_down(buf: &OpBuffer, nwidth: usize, nheight: usize) -> OpBuffer {
-  assert_eq!(buf.colors, 4); // When we're scaling down we're always at 4 cpp
-
-  let mut out = OpBuffer::new(nwidth, nheight, 4, buf.monochrome);
-  let rowskip = (buf.width as f32) / (nwidth as f32);
-  let colskip = (buf.height as f32) / (nheight as f32);
-
-  // Go around the image averaging blocks of pixels
-  out.mutate_lines(&(|line: &mut [f32], row| {
-    for col in 0..nwidth {
-      let mut sums: [f32; 4] = [0.0;4];
-      let mut counts: [f32; 4] = [0.0;4];
-      let (fromrow, torow, topfactor, bottomfactor) = calc_skips(row, buf.height, rowskip);
-      for y in fromrow..torow {
-        let (fromcol, tocol, leftfactor, rightfactor) = calc_skips(col, buf.width, colskip);
-        for x in fromcol..tocol {
-          let factor = {
-            (if y == fromrow {topfactor} else if y == torow {bottomfactor} else {1.0}) *
-            (if x == fromcol {leftfactor} else if x == tocol {rightfactor} else {1.0})
-          };
-
-          for c in 0..4 {
-            sums[c] += buf.data[(y*buf.width+x)*4 + c] * factor;
-            counts[c] += factor;
-          }
-        }
-      }
-
-      for c in 0..4 {
-        if counts[c] > 0.0 {
-          line[col*4+c] = sums[c] / counts[c];
         }
       }
     }

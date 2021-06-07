@@ -13,6 +13,7 @@ mod pipeline;
 pub use self::pipeline::*;
 pub use self::ops::*;
 pub mod color_conversions;
+mod scaling;
 
 use std::path::Path;
 
