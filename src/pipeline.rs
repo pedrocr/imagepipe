@@ -283,31 +283,16 @@ impl Pipeline {
     // through the whole pipeline. Just go straight to 8bit using the image
     // crate and resize if needed
     if let ImageSource::Other(ref image) = self.globals.image {
-      if self.default_ops() {
+      if self.default_ops() &&
+         self.globals.settings.maxwidth == 0 &&
+         self.globals.settings.maxheight == 0 {
         return Ok(do_timing!("total output_8bit_fastpath()", {
-        let maxwidth = self.globals.settings.maxwidth;
-        let maxheight = self.globals.settings.maxheight;
-        if maxwidth != 0 || maxheight != 0 {
-          // we need to resize
-          let maxwidth = if maxwidth == 0 {u32::MAX} else {maxwidth as u32};
-          let maxheight = if maxheight == 0 {u32::MAX} else {maxheight as u32};
-          let image = do_timing!("  image resize", image.resize(maxwidth, maxheight, image::imageops::FilterType::Lanczos3));
-          let rgb = do_timing!("  8 bit conversion", image.into_rgb8());
-          let (width, height) = (rgb.width() as usize, rgb.height() as usize);
-          SRGBImage{
-            width,
-            height,
-            data: rgb.into_raw(),
-          }
-        } else {
-          // we can output straight from the image
-          let rgb = do_timing!("  8 bit conversion", image.to_rgb8());
-          let (width, height) = (rgb.width() as usize, rgb.height() as usize);
-          SRGBImage{
-            width,
-            height,
-            data: rgb.into_raw(),
-          }
+        let rgb = image.to_rgb8();
+        let (width, height) = (rgb.width() as usize, rgb.height() as usize);
+        SRGBImage{
+          width,
+          height,
+          data: rgb.into_raw(),
         }
         }))
       }
