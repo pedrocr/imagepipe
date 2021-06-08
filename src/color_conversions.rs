@@ -335,6 +335,22 @@ mod tests {
     }
   }
 
+  use num_traits::ops::saturating::Saturating;
+  use std::fmt::Debug;
+  use std::cmp::PartialOrd;
+  #[inline(always)]
+  fn assert_offby<T>(to: (T,T,T), from: (T,T,T), offdown: T, offup: T)
+    where T: Saturating+Debug+PartialOrd+Copy {
+    let condition =
+      to.0 <= from.0.saturating_add(offup) && to.0 >= from.0.saturating_sub(offdown) &&
+      to.1 <= from.1.saturating_add(offup) && to.1 >= from.1.saturating_sub(offdown) &&
+      to.2 <= from.2.saturating_add(offup) && to.2 >= from.2.saturating_sub(offdown);
+    if !condition {
+      eprintln!("Got {:?} instead of {:?}", to, from);
+    }
+    assert!(condition)
+  }
+
   #[test]
   fn roundtrip_8bit_lab_xyz() {
     for x in 0..u8::MAX {
@@ -359,9 +375,6 @@ mod tests {
 
   #[test]
   fn roundtrip_8bit_lab_rgb() {
-    // FIXME: this roundtrip currently requires off-by-one precision, hopefully
-    //        it can be fixed to be exact as well
-
     for r in 0..u8::MAX {
       for g in 0..u8::MAX {
         for b in 0..u8::MAX {
@@ -377,10 +390,8 @@ mod tests {
           let outg = output8bit(outgf);
           let outb = output8bit(outbf);
 
-          if (outr, outg, outb) != (r, g, b) {
-            eprintln!("looking for {:?} and found {:?}", (r, g, b), (outr, outg, outb));
-          }
-          assert!(!(outr > r+1 || outg > g+1 || outb > b+1));
+          // FIXME requires off-by-one
+          assert_offby((outr, outg, outb), (r, g, b), 1, 1);
         }
       }
     }
@@ -388,9 +399,6 @@ mod tests {
 
   #[test]
   fn roundtrip_16bit_lab_xyz() {
-    // FIXME: this roundtrip currently requires off-by-one precision, hopefully
-    //        it can be fixed to be exact as well
-
     // step_by different primes to try and get coverage without being exaustive
     for x in (0..u16::MAX).step_by(89) {
       for y in (0..u16::MAX).step_by(97){
@@ -407,7 +415,8 @@ mod tests {
           let outy = output16bit(outyf);
           let outz = output16bit(outzf);
 
-          assert!(!(outx > x+1 || outy > y+1 || outz > z+1));
+          // FIXME requires off-by-one
+          assert_offby((outx, outy, outz), (x, y, z), 1, 0);
 
           // test output 8 bit
           let x = x >> 8;
@@ -418,7 +427,8 @@ mod tests {
           let outy = output8bit(outyf) as u16;
           let outz = output8bit(outzf) as u16;
 
-          assert!(!(outx > x+1 || outy > y+1 || outz > z+1));
+          // FIXME requires off-by-one
+          assert_offby((outx, outy, outz), (x, y, z), 1, 0);
         }
       }
     }
@@ -426,9 +436,6 @@ mod tests {
 
   #[test]
   fn roundtrip_16bit_lab_rgb() {
-    // FIXME: this roundtrip currently requires off-by-two precision, hopefully
-    //        it can be fixed to be exact as well
-
     for r in (0..u16::MAX).step_by(89) {
       for g in (0..u16::MAX).step_by(97){
         for b in (0..u16::MAX).step_by(101) {
@@ -445,7 +452,8 @@ mod tests {
           let outg = output16bit(outgf);
           let outb = output16bit(outbf);
 
-          assert!(!(outr > r+2 || outg > g+2 || outb > b+2));
+          // FIXME requires off-by-three
+          assert_offby((outr, outg, outb), (r, g, b), 3, 2);
 
           // test output 8 bit
           let r = r >> 8;
@@ -456,7 +464,8 @@ mod tests {
           let outg = output8bit(outgf) as u16;
           let outb = output8bit(outbf) as u16;
 
-          assert!(!(outr > r+1 || outg > g+1 || outb > b+1));
+          // FIXME requires off-by-one
+          assert_offby((outr, outg, outb), (r, g, b), 1, 1);
         }
       }
     }
