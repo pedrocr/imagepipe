@@ -105,26 +105,7 @@ impl<'a> ImageOp<'a> for OpToLab {
 
     Arc::new(buf.process_into_new(3, &(|outb: &mut [f32], inb: &[f32]| {
       for (pixin, pixout) in inb.chunks_exact(4).zip(outb.chunks_exact_mut(3)) {
-        macro_rules! clip {
-          ($val:expr) => {
-            if $val > 1.0 {
-              1.0
-            } else {
-              $val
-            }
-          };
-        }
-
-        let r = clip!(pixin[0] * mul[0]);
-        let g = clip!(pixin[1] * mul[1]);
-        let b = clip!(pixin[2] * mul[2]);
-        let e = clip!(pixin[3] * mul[3]);
-
-        let x = r * cmatrix[0][0] + g * cmatrix[0][1] + b * cmatrix[0][2] + e * cmatrix[0][3];
-        let y = r * cmatrix[1][0] + g * cmatrix[1][1] + b * cmatrix[1][2] + e * cmatrix[1][3];
-        let z = r * cmatrix[2][0] + g * cmatrix[2][1] + b * cmatrix[2][2] + e * cmatrix[2][3];
-
-        let (l,a,b) = xyz_to_lab(x,y,z);
+        let (l,a,b) = camera_to_lab(mul, cmatrix, pixin);
 
         pixout[0] = l;
         pixout[1] = a;
@@ -147,19 +128,9 @@ impl OpFromLab {
 impl<'a> ImageOp<'a> for OpFromLab {
   fn name(&self) -> &str {"from_lab"}
   fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
-    let cmatrix = XYZ_D65_33;
-
     Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
       for pix in line.chunks_exact_mut(3) {
-        let l = pix[0];
-        let a = pix[1];
-        let b = pix[2];
-
-        let (x,y,z) = lab_to_xyz(l,a,b);
-
-        let r = x * cmatrix[0][0] + y * cmatrix[0][1] + z * cmatrix[0][2];
-        let g = x * cmatrix[1][0] + y * cmatrix[1][1] + z * cmatrix[1][2];
-        let b = x * cmatrix[2][0] + y * cmatrix[2][1] + z * cmatrix[2][2];
+        let (r,g,b) = lab_to_rgb(XYZ_D65_33, pix);
 
         pix[0] = r;
         pix[1] = g;

@@ -22,6 +22,32 @@ pub static XYZ_D65_34: [[f32;3];4] = [
   XYZ_D65_33[0], XYZ_D65_33[1], XYZ_D65_33[2], [0.0, 0.0, 0.0]
 ];
 
+#[inline(always)]
+pub fn camera_to_lab(mul: [f32;4], cmatrix: [[f32;4];3], pixin: &[f32]) -> (f32, f32, f32) {
+    // Multiply pixel by RGBE multipliers, clipping to 1.0
+    let r = (pixin[0] * mul[0]).min(1.0);
+    let g = (pixin[1] * mul[1]).min(1.0);
+    let b = (pixin[2] * mul[2]).min(1.0);
+    let e = (pixin[3] * mul[3]).min(1.0);
+
+    // Calculate XYZ by applying the camera matrix
+    let x = r * cmatrix[0][0] + g * cmatrix[0][1] + b * cmatrix[0][2] + e * cmatrix[0][3];
+    let y = r * cmatrix[1][0] + g * cmatrix[1][1] + b * cmatrix[1][2] + e * cmatrix[1][3];
+    let z = r * cmatrix[2][0] + g * cmatrix[2][1] + b * cmatrix[2][2] + e * cmatrix[2][3];
+
+    xyz_to_lab(x,y,z)
+}
+
+#[inline(always)]
+pub fn lab_to_rgb(rgbmatrix: [[f32;3];3], pixin: &[f32]) -> (f32, f32, f32) {
+    let (x,y,z) = lab_to_xyz(pixin[0], pixin[1], pixin[2]);
+
+    let r = x * rgbmatrix[0][0] + y * rgbmatrix[0][1] + z * rgbmatrix[0][2];
+    let g = x * rgbmatrix[1][0] + y * rgbmatrix[1][1] + z * rgbmatrix[1][2];
+    let b = x * rgbmatrix[2][0] + y * rgbmatrix[2][1] + z * rgbmatrix[2][2];
+    (r, g, b)
+}
+
 /// Remove sRGB gamma from a value
 #[inline(always)]
 pub fn expand_srgb_gamma(v: f32) -> f32 {
@@ -310,7 +336,7 @@ mod tests {
   }
 
   #[test]
-  fn roundtrip_8bit_lab() {
+  fn roundtrip_8bit_lab_xyz() {
     for x in 0..u8::MAX {
       for y in 0..u8::MAX {
         for z in 0..u8::MAX {
@@ -332,7 +358,36 @@ mod tests {
   }
 
   #[test]
-  fn roundtrip_16bit_lab() {
+  fn roundtrip_8bit_lab_rgb() {
+    // FIXME: this roundtrip currently requires off-by-one precision, hopefully
+    //        it can be fixed to be exact as well
+
+    for r in 0..u8::MAX {
+      for g in 0..u8::MAX {
+        for b in 0..u8::MAX {
+          let pixel = [input8bit(r), input8bit(g), input8bit(b), 0.0];
+          let multipliers = [1.0,1.0,1.0,1.0];
+          let cmatrix = SRGB_D65_43;
+          let rgbmatrix = XYZ_D65_33;
+
+          let (ll,la,lb) = camera_to_lab(multipliers, cmatrix, &pixel);
+          let (outrf,outgf,outbf) = lab_to_rgb(rgbmatrix, &[ll,la,lb]);
+
+          let outr = output8bit(outrf);
+          let outg = output8bit(outgf);
+          let outb = output8bit(outbf);
+
+          if (outr, outg, outb) != (r, g, b) {
+            eprintln!("looking for {:?} and found {:?}", (r, g, b), (outr, outg, outb));
+          }
+          assert!(!(outr > r+1 || outg > g+1 || outb > b+1));
+        }
+      }
+    }
+  }
+
+  #[test]
+  fn roundtrip_16bit_lab_xyz() {
     // FIXME: this roundtrip currently requires off-by-one precision, hopefully
     //        it can be fixed to be exact as well
 
@@ -364,6 +419,44 @@ mod tests {
           let outz = output8bit(outzf) as u16;
 
           assert!(!(outx > x+1 || outy > y+1 || outz > z+1));
+        }
+      }
+    }
+  }
+
+  #[test]
+  fn roundtrip_16bit_lab_rgb() {
+    // FIXME: this roundtrip currently requires off-by-two precision, hopefully
+    //        it can be fixed to be exact as well
+
+    for r in (0..u16::MAX).step_by(89) {
+      for g in (0..u16::MAX).step_by(97){
+        for b in (0..u16::MAX).step_by(101) {
+          let pixel = [input16bit(r), input16bit(g), input16bit(b), 0.0];
+          let multipliers = [1.0,1.0,1.0,1.0];
+          let cmatrix = SRGB_D65_43;
+          let rgbmatrix = XYZ_D65_33;
+
+          let (ll,la,lb) = camera_to_lab(multipliers, cmatrix, &pixel);
+          let (outrf,outgf,outbf) = lab_to_rgb(rgbmatrix, &[ll,la,lb]);
+
+          // test output 16 bit
+          let outr = output16bit(outrf);
+          let outg = output16bit(outgf);
+          let outb = output16bit(outbf);
+
+          assert!(!(outr > r+2 || outg > g+2 || outb > b+2));
+
+          // test output 8 bit
+          let r = r >> 8;
+          let g = g >> 8;
+          let b = b >> 8;
+
+          let outr = output8bit(outrf) as u16;
+          let outg = output8bit(outgf) as u16;
+          let outb = output8bit(outbf) as u16;
+
+          assert!(!(outr > r+1 || outg > g+1 || outb > b+1));
         }
       }
     }
