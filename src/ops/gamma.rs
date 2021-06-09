@@ -16,16 +16,17 @@ impl<'a> ImageOp<'a> for OpGamma {
     if pipeline.settings.linear {
       buf
     } else {
-      let maxvals = 1 << 16; // 2^16 is enough precision for any output format
+      // 2^16 is enough precision for almost any output format
+      let maxvals = 1 << 16 - 1;
       let mut glookup: Vec<f32> = vec![0.0; maxvals+1];
-      for i in 0..(maxvals+1) {
+      for i in 0..=maxvals {
         let v = (i as f32) / (maxvals as f32);
         glookup[i] = apply_srgb_gamma(v);
       }
 
       Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
         for pix in line.chunks_exact_mut(1) {
-          pix[0] = glookup[(pix[0].max(0.0)*(maxvals as f32)).min(maxvals as f32) as usize];
+          pix[0] = glookup[(pix[0].max(0.0).min(1.0) * (maxvals as f32)) as usize];
         }
       })))
     }
