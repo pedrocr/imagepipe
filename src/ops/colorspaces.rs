@@ -47,9 +47,9 @@ impl OpToLab {
       },
       ImageSource::Other(_) => {
         OpToLab{
-          cam_to_xyz: SRGB_D65_43,
-          cam_to_xyz_normalized: SRGB_D65_43,
-          xyz_to_cam: XYZ_D65_34,
+          cam_to_xyz: *SRGB_D65_43,
+          cam_to_xyz_normalized: *SRGB_D65_43,
+          xyz_to_cam: *XYZ_D65_34,
           wb_coeffs: [1.0, 1.0, 1.0, 0.0],
         }
       }
@@ -92,7 +92,7 @@ impl<'a> ImageOp<'a> for OpToLab {
   fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
     let cmatrix = if buf.monochrome {
       // Monochrome means we don't need color conversion so it's as if the camera is itself D65 SRGB
-      SRGB_D65_43
+      *SRGB_D65_43
     } else {
       self.cam_to_xyz_normalized
     };
@@ -130,7 +130,7 @@ impl<'a> ImageOp<'a> for OpFromLab {
   fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
     Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
       for pix in line.chunks_exact_mut(3) {
-        let (r,g,b) = lab_to_rgb(XYZ_D65_33, pix);
+        let (r,g,b) = lab_to_rgb(*XYZ_D65_33, pix);
 
         pix[0] = r;
         pix[1] = g;

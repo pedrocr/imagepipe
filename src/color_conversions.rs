@@ -1,26 +1,42 @@
-pub static SRGB_D65_33: [[f32;3];3] = [
-  [0.4124564, 0.3575761, 0.1804375],
-  [0.2126729, 0.7151522, 0.0721750],
-  [0.0193339, 0.1191920, 0.9503041],
-];
+lazy_static! {
+  pub static ref SRGB_D65_33: [[f32;3];3] = [
+    [0.4124564, 0.3575761, 0.1804375],
+    [0.2126729, 0.7151522, 0.0721750],
+    [0.0193339, 0.1191920, 0.9503041],
+  ];
+  pub static ref SRGB_D65_XYZ_WHITE: (f32,f32,f32) = (0.95047, 1.000, 1.08883);
+  pub static ref XYZ_D65_33: [[f32;3];3] = inverse(*SRGB_D65_33);
+  pub static ref XYZ_D65_34: [[f32;3];4] = [
+    XYZ_D65_33[0], XYZ_D65_33[1], XYZ_D65_33[2], [0.0, 0.0, 0.0]
+  ];
+  pub static ref SRGB_D65_43: [[f32;4];3] = [
+    [SRGB_D65_33[0][0], SRGB_D65_33[0][1], SRGB_D65_33[0][2], 0.0],
+    [SRGB_D65_33[1][0], SRGB_D65_33[1][1], SRGB_D65_33[1][2], 0.0],
+    [SRGB_D65_33[2][0], SRGB_D65_33[2][1], SRGB_D65_33[2][2], 0.0],
+  ];
+}
 
-pub static SRGB_D65_XYZ_WHITE: (f32,f32,f32) = (0.95047, 1.000, 1.08883);
+// FIXME: when float math is allowed in const fn get rid of lazy_static!
+fn inverse(inm: [[f32;3];3]) -> [[f32;3];3] {
+  let invdet = 1.0 / (
+    inm[0][0] * (inm[1][1] * inm[2][2] - inm[2][1] * inm[1][2]) -
+    inm[0][1] * (inm[1][0] * inm[2][2] - inm[1][2] * inm[2][0]) +
+    inm[0][2] * (inm[1][0] * inm[2][1] - inm[1][1] * inm[2][0])
+  );
 
-pub static XYZ_D65_33: [[f32;3];3] = [
-  [ 3.2404542, -1.5371385, -0.4985314],
-  [-0.9692660,  1.8760108,  0.0415560],
-  [ 0.0556434, -0.2040259,  1.0572252],
-];
+  let mut out = [[0.0; 3];3];
+  out[0][0] =  (inm[1][1]*inm[2][2] - inm[2][1]*inm[1][2]) * invdet;
+  out[0][1] = -(inm[0][1]*inm[2][2] - inm[0][2]*inm[2][1]) * invdet;
+  out[0][2] =  (inm[0][1]*inm[1][2] - inm[0][2]*inm[1][1]) * invdet;
+  out[1][0] = -(inm[1][0]*inm[2][2] - inm[1][2]*inm[2][0]) * invdet;
+  out[1][1] =  (inm[0][0]*inm[2][2] - inm[0][2]*inm[2][0]) * invdet;
+  out[1][2] = -(inm[0][0]*inm[1][2] - inm[1][0]*inm[0][2]) * invdet;
+  out[2][0] =  (inm[1][0]*inm[2][1] - inm[2][0]*inm[1][1]) * invdet;
+  out[2][1] = -(inm[0][0]*inm[2][1] - inm[2][0]*inm[0][1]) * invdet;
+  out[2][2] =  (inm[0][0]*inm[1][1] - inm[1][0]*inm[0][1]) * invdet;
 
-pub static SRGB_D65_43: [[f32;4];3] = [
-  [SRGB_D65_33[0][0], SRGB_D65_33[0][1], SRGB_D65_33[0][2], 0.0],
-  [SRGB_D65_33[1][0], SRGB_D65_33[1][1], SRGB_D65_33[1][2], 0.0],
-  [SRGB_D65_33[2][0], SRGB_D65_33[2][1], SRGB_D65_33[2][2], 0.0],
-];
-
-pub static XYZ_D65_34: [[f32;3];4] = [
-  XYZ_D65_33[0], XYZ_D65_33[1], XYZ_D65_33[2], [0.0, 0.0, 0.0]
-];
+  out
+}
 
 #[inline(always)]
 pub fn camera_to_lab(mul: [f32;4], cmatrix: [[f32;4];3], pixin: &[f32]) -> (f32, f32, f32) {
@@ -109,7 +125,7 @@ fn xyz_to_lab_transform(val: f32) -> f32 {
 
 #[inline(always)]
 pub fn xyz_to_lab(x: f32, y: f32, z: f32) -> (f32,f32,f32) {
-  let (xw, yw, zw) = SRGB_D65_XYZ_WHITE;
+  let (xw, yw, zw) = *SRGB_D65_XYZ_WHITE;
   let (xr, yr, zr) = (x/xw, y/yw, z/zw);
 
   let fx = xyz_to_lab_transform(xr);
@@ -141,7 +157,7 @@ pub fn lab_to_xyz(l: f32, a: f32, b: f32) -> (f32,f32,f32) {
   let fz3 = fz * fz * fz;
   let zr = if fz3 > e {fz3} else {(116.0 * fz - 16.0)/k};
 
-  let (xw, yw, zw) = SRGB_D65_XYZ_WHITE;
+  let (xw, yw, zw) = *SRGB_D65_XYZ_WHITE;
   (xr*xw, yr*yw, zr*zw)
 }
 
@@ -389,8 +405,8 @@ mod tests {
         for b in 0..u8::MAX {
           let pixel = [input8bit(r), input8bit(g), input8bit(b), 0.0];
           let multipliers = [1.0,1.0,1.0,1.0];
-          let cmatrix = SRGB_D65_43;
-          let rgbmatrix = XYZ_D65_33;
+          let cmatrix = *SRGB_D65_43;
+          let rgbmatrix = *XYZ_D65_33;
 
           let (ll,la,lb) = camera_to_lab(multipliers, cmatrix, &pixel);
           let (outrf,outgf,outbf) = lab_to_rgb(rgbmatrix, &[ll,la,lb]);
@@ -417,8 +433,8 @@ mod tests {
             0.0
           ];
           let multipliers = [1.0,1.0,1.0,1.0];
-          let cmatrix = SRGB_D65_43;
-          let rgbmatrix = XYZ_D65_33;
+          let cmatrix = *SRGB_D65_43;
+          let rgbmatrix = *XYZ_D65_33;
 
           let (ll,la,lb) = camera_to_lab(multipliers, cmatrix, &pixel);
           let (outrf,outgf,outbf) = lab_to_rgb(rgbmatrix, &[ll,la,lb]);
@@ -479,8 +495,8 @@ mod tests {
         for b in (0..u16::MAX).step_by(101) {
           let pixel = [input16bit(r), input16bit(g), input16bit(b), 0.0];
           let multipliers = [1.0,1.0,1.0,1.0];
-          let cmatrix = SRGB_D65_43;
-          let rgbmatrix = XYZ_D65_33;
+          let cmatrix = *SRGB_D65_43;
+          let rgbmatrix = *XYZ_D65_33;
 
           let (ll,la,lb) = camera_to_lab(multipliers, cmatrix, &pixel);
           let (outrf,outgf,outbf) = lab_to_rgb(rgbmatrix, &[ll,la,lb]);
@@ -519,8 +535,8 @@ mod tests {
             0.0
           ];
           let multipliers = [1.0,1.0,1.0,1.0];
-          let cmatrix = SRGB_D65_43;
-          let rgbmatrix = XYZ_D65_33;
+          let cmatrix = *SRGB_D65_43;
+          let rgbmatrix = *XYZ_D65_33;
 
           let (ll,la,lb) = camera_to_lab(multipliers, cmatrix, &pixel);
           let ll = roundtrip_gamma(ll);
