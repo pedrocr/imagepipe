@@ -71,69 +71,40 @@ pub fn apply_srgb_gamma(v: f32) -> f32 {
 #[inline(always)]
 pub fn xyz_to_lab(x: f32, y: f32, z: f32) -> (f32,f32,f32) {
   let (xw, yw, zw) = SRGB_D65_XYZ_WHITE;
+  let (xr, yr, zr) = (x/xw, y/yw, z/zw);
+  let e = 216.0 / 24389.0;
+  let k = 24389.0 / 27.0;
+  let fx = if xr > e {xr.cbrt()} else {(k*xr + 16.0) / 116.0};
+  let fy = if yr > e {yr.cbrt()} else {(k*yr + 16.0) / 116.0};
+  let fz = if zr > e {zr.cbrt()} else {(k*zr + 16.0) / 116.0};
 
-  let l = 116.0 * labf(y/yw) - 16.0;
-  let a = 500.0 * (labf(x/xw) - labf(y/yw));
-  let b = 200.0 * (labf(y/yw) - labf(z/zw));
+  let l = 116.0 * fy - 16.0;
+  let a = 500.0 * (fx - fy);
+  let b = 200.0 * (fy - fz);
 
   (l/100.0,(a+128.0)/256.0,(b+128.0)/256.0)
 }
 
 #[inline(always)]
 pub fn lab_to_xyz(l: f32, a: f32, b: f32) -> (f32,f32,f32) {
-  let (xw, yw, zw) = SRGB_D65_XYZ_WHITE;
-
   let cl = l * 100.0;
   let ca = (a * 256.0) - 128.0;
   let cb = (b * 256.0) - 128.0;
 
-  let x = xw * labinvf((1.0/116.0) * (cl+16.0) + (1.0/500.0) * ca);
-  let y = yw * labinvf((1.0/116.0) * (cl+16.0));
-  let z = zw * labinvf((1.0/116.0) * (cl+16.0) - (1.0/200.0) * cb);
+  let fy = (cl + 16.0) / 116.0;
+  let fx = ca / 500.0 + fy;
+  let fz = fy - (cb / 200.0);
 
-  (x,y,z)
-}
+  let e = 216.0 / 24389.0;
+  let k = 24389.0 / 27.0;
+  let fx3 = fx * fx * fx;
+  let xr = if fx3 > e {fx3} else {(116.0 * fx - 16.0)/k};
+  let yr = if cl > k*e {fy*fy*fy} else {cl / k};
+  let fz3 = fz * fz * fz;
+  let zr = if fz3 > e {fz3} else {(116.0 * fz - 16.0)/k};
 
-static CBRT_MAXVALS: usize = 1 << 16; // 2^16 should be enough precision
-lazy_static! {
-  static ref CBRT_LOOKUP: Vec<f32> = {
-    let mut lookup: Vec<f32> = vec![0.0; CBRT_MAXVALS+1];
-    for i in 0..(CBRT_MAXVALS+1) {
-      let v = (i as f32) / (CBRT_MAXVALS as f32);
-      lookup[i] = v.cbrt();
-    }
-    lookup
-  };
-}
-
-#[inline(always)]
-fn labf(val: f32) -> f32 {
-  let cutoff = (6.0/29.0)*(6.0/29.0)*(6.0/29.0);
-  let multiplier = (1.0/3.0) * (29.0/6.0) * (29.0/6.0);
-  let constant = 4.0 / 29.0;
-
-  if val > cutoff {
-    if val > 0.0 && val < 1.0 { // use the lookup table
-      CBRT_LOOKUP[(val*(CBRT_MAXVALS as f32)) as usize]
-    } else {
-      val.cbrt()
-    }
-  } else {
-    val * multiplier + constant
-  }
-}
-
-#[inline(always)]
-fn labinvf(val: f32) -> f32 {
-  let cutoff = 6.0 / 29.0;
-  let multiplier = 3.0 * (6.0/29.0) * (6.0/29.0);
-  let constant = multiplier * (-4.0 / 29.0);
-
-  if val > cutoff {
-    val * val * val
-  } else {
-    val * multiplier + constant
-  }
+  let (xw, yw, zw) = SRGB_D65_XYZ_WHITE;
+  (xr*xw, yr*yw, zr*zw)
 }
 
 const CIE_OBSERVERS : [(u32, [f64;3]); 81] = [
@@ -335,6 +306,7 @@ mod tests {
     }
   }
 
+/*
   use num_traits::ops::saturating::Saturating;
   use std::fmt::Debug;
   use std::cmp::PartialOrd;
@@ -350,6 +322,7 @@ mod tests {
     }
     assert!(condition)
   }
+*/
 
   #[test]
   fn roundtrip_8bit_lab_xyz() {
@@ -390,8 +363,7 @@ mod tests {
           let outg = output8bit(outgf);
           let outb = output8bit(outbf);
 
-          // FIXME requires off-by-one
-          assert_offby((outr, outg, outb), (r, g, b), 1, 1);
+          assert_eq!((outr, outg, outb), (r, g, b));
         }
       }
     }
@@ -415,8 +387,7 @@ mod tests {
           let outy = output16bit(outyf);
           let outz = output16bit(outzf);
 
-          // FIXME requires off-by-one
-          assert_offby((outx, outy, outz), (x, y, z), 1, 0);
+          assert_eq!((outx, outy, outz), (x, y, z));
 
           // test output 8 bit
           let x = x >> 8;
@@ -427,8 +398,7 @@ mod tests {
           let outy = output8bit(outyf) as u16;
           let outz = output8bit(outzf) as u16;
 
-          // FIXME requires off-by-one
-          assert_offby((outx, outy, outz), (x, y, z), 1, 0);
+          assert_eq!((outx, outy, outz), (x, y, z));
         }
       }
     }
@@ -452,8 +422,7 @@ mod tests {
           let outg = output16bit(outgf);
           let outb = output16bit(outbf);
 
-          // FIXME requires off-by-three
-          assert_offby((outr, outg, outb), (r, g, b), 3, 2);
+          assert_eq!((outr, outg, outb), (r, g, b));
 
           // test output 8 bit
           let r = r >> 8;
@@ -464,8 +433,7 @@ mod tests {
           let outg = output8bit(outgf) as u16;
           let outb = output8bit(outbf) as u16;
 
-          // FIXME requires off-by-one
-          assert_offby((outr, outg, outb), (r, g, b), 1, 1);
+          assert_eq!((outr, outg, outb), (r, g, b));
         }
       }
     }
