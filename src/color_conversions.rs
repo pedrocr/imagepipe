@@ -72,7 +72,7 @@ pub fn apply_srgb_gamma(v: f32) -> f32 {
 // roundtrip which results in a 4MB lookup table which isn't *too* bad. It may
 // be possible to make it smaller by doing some kind of cheap non-linear
 // transform to the keys to allocate more bits to the areas that need it most.
-static XYZ_LAB_TRANSFORM_MAX: usize = 1 << 20;
+static XYZ_LAB_TRANSFORM_MAX: usize = (1 << 20) - 1;
 lazy_static! {
   static ref XYZ_LAB_TRANSFORM_LOOKUP: Vec<f32> =
     create_xyz_lab_transform_table(XYZ_LAB_TRANSFORM_MAX);
