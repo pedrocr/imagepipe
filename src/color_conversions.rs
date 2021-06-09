@@ -115,14 +115,14 @@ pub fn xyz_to_lab(x: f32, y: f32, z: f32) -> (f32,f32,f32) {
   let a = 500.0 * (fx - fy);
   let b = 200.0 * (fy - fz);
 
-  (l/100.0,(a+128.0)/256.0,(b+128.0)/256.0)
+  (l/100.0,(a+127.0)/255.0,(b+127.0)/255.0)
 }
 
 #[inline(always)]
 pub fn lab_to_xyz(l: f32, a: f32, b: f32) -> (f32,f32,f32) {
   let cl = l * 100.0;
-  let ca = (a * 256.0) - 128.0;
-  let cb = (b * 256.0) - 128.0;
+  let ca = (a * 255.0) - 127.0;
+  let cb = (b * 255.0) - 127.0;
 
   let fy = (cl + 16.0) / 116.0;
   let fx = ca / 500.0 + fy;
