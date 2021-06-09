@@ -72,24 +72,29 @@ pub fn apply_srgb_gamma(v: f32) -> f32 {
 // roundtrip which results in a 4MB lookup table which isn't *too* bad. It may
 // be possible to make it smaller by doing some kind of cheap non-linear
 // transform to the keys to allocate more bits to the areas that need it most.
-static XYZ_LAB_TRANSFORM_MAXVALS: usize = 1 << 20;
+static XYZ_LAB_TRANSFORM_MAX: usize = 1 << 20;
 lazy_static! {
-  static ref XYZ_LAB_TRANSFORM_LOOKUP: Vec<f32> = {
-    let mut lookup: Vec<f32> = vec![0.0; XYZ_LAB_TRANSFORM_MAXVALS+1];
-    let e = 216.0 / 24389.0;
-    let k = 24389.0 / 27.0;
-    for i in 0..(XYZ_LAB_TRANSFORM_MAXVALS+1) {
-      let v = (i as f32) / (XYZ_LAB_TRANSFORM_MAXVALS as f32);
-      lookup[i] = if v > e {v.cbrt()} else {(k*v + 16.0) / 116.0};
-    }
-    lookup
-  };
+  static ref XYZ_LAB_TRANSFORM_LOOKUP: Vec<f32> =
+    create_xyz_lab_transform_table(XYZ_LAB_TRANSFORM_MAX);
+}
+
+// FIXME: In the future when floats and loops are stable in const fn get rid of
+//        lazy_static and have the table be generated at compile time instead.
+fn create_xyz_lab_transform_table(max: usize) -> Vec<f32> {
+  let mut lookup: Vec<f32> = vec![0.0; max+1];
+  let e = 216.0 / 24389.0;
+  let k = 24389.0 / 27.0;
+  for i in 0..=max {
+    let v = (i as f32) / (max as f32);
+    lookup[i] = if v > e {v.cbrt()} else {(k*v + 16.0) / 116.0};
+  }
+  lookup
 }
 
 #[inline(always)]
 fn xyz_to_lab_transform(val: f32) -> f32 {
   if val > 0.0 && val < 1.0 {
-    XYZ_LAB_TRANSFORM_LOOKUP[(val * XYZ_LAB_TRANSFORM_MAXVALS as f32) as usize]
+    XYZ_LAB_TRANSFORM_LOOKUP[(val * XYZ_LAB_TRANSFORM_MAX as f32) as usize]
   } else {
     let e = 216.0 / 24389.0;
     let k = 24389.0 / 27.0;
