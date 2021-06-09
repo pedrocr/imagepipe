@@ -68,9 +68,10 @@ pub fn apply_srgb_gamma(v: f32) -> f32 {
   }
 }
 
-// With interpolation an 11 bit table is enough, but since this is small enough
-// use 12 bits to be a little on the safe side.
-static XYZ_LAB_TRANSFORM_MAX: usize = (1 << 12) - 1;
+// With interpolation an 11 bit table is enough for all the individual roundtrips
+// 13 bits are needed for an 8 bit source image to fully roundtrip:
+//   sRGBGamma->sRGB->XYZ->Lab->XYZ->sRGB->sRGBGamma
+static XYZ_LAB_TRANSFORM_MAX: usize = (1 << 13) - 1;
 lazy_static! {
   static ref XYZ_LAB_TRANSFORM_LOOKUP: Vec<f32> =
     create_xyz_lab_transform_table(XYZ_LAB_TRANSFORM_MAX);
@@ -343,7 +344,6 @@ mod tests {
     }
   }
 
-/*
   use num_traits::ops::saturating::Saturating;
   use std::fmt::Debug;
   use std::cmp::PartialOrd;
@@ -359,7 +359,6 @@ mod tests {
     }
     assert!(condition)
   }
-*/
 
   #[test]
   fn roundtrip_8bit_lab_xyz() {
@@ -395,6 +394,38 @@ mod tests {
 
           let (ll,la,lb) = camera_to_lab(multipliers, cmatrix, &pixel);
           let (outrf,outgf,outbf) = lab_to_rgb(rgbmatrix, &[ll,la,lb]);
+
+          let outr = output8bit(outrf);
+          let outg = output8bit(outgf);
+          let outb = output8bit(outbf);
+
+          assert_eq!((outr, outg, outb), (r, g, b));
+        }
+      }
+    }
+  }
+
+  #[test]
+  fn roundtrip_8bit_lab_rgb_gamma() {
+    for r in 0..u8::MAX {
+      for g in 0..u8::MAX {
+        for b in 0..u8::MAX {
+          let pixel = [
+            expand_srgb_gamma(input8bit(r)),
+            expand_srgb_gamma(input8bit(g)),
+            expand_srgb_gamma(input8bit(b)),
+            0.0
+          ];
+          let multipliers = [1.0,1.0,1.0,1.0];
+          let cmatrix = SRGB_D65_43;
+          let rgbmatrix = XYZ_D65_33;
+
+          let (ll,la,lb) = camera_to_lab(multipliers, cmatrix, &pixel);
+          let (outrf,outgf,outbf) = lab_to_rgb(rgbmatrix, &[ll,la,lb]);
+
+          let outrf = apply_srgb_gamma(outrf);
+          let outgf = apply_srgb_gamma(outgf);
+          let outbf = apply_srgb_gamma(outbf);
 
           let outr = output8bit(outrf);
           let outg = output8bit(outgf);
@@ -460,6 +491,52 @@ mod tests {
           let outb = output16bit(outbf);
 
           assert_eq!((outr, outg, outb), (r, g, b));
+
+          // test output 8 bit
+          let r = r >> 8;
+          let g = g >> 8;
+          let b = b >> 8;
+
+          let outr = output8bit(outrf) as u16;
+          let outg = output8bit(outgf) as u16;
+          let outb = output8bit(outbf) as u16;
+
+          assert_eq!((outr, outg, outb), (r, g, b));
+        }
+      }
+    }
+  }
+
+  #[test]
+  fn roundtrip_16bit_lab_rgb_gamma() {
+    for r in (0..u16::MAX).step_by(89) {
+      for g in (0..u16::MAX).step_by(97){
+        for b in (0..u16::MAX).step_by(101) {
+          let pixel = [
+            expand_srgb_gamma(input16bit(r)),
+            expand_srgb_gamma(input16bit(g)),
+            expand_srgb_gamma(input16bit(b)),
+            0.0
+          ];
+          let multipliers = [1.0,1.0,1.0,1.0];
+          let cmatrix = SRGB_D65_43;
+          let rgbmatrix = XYZ_D65_33;
+
+          let (ll,la,lb) = camera_to_lab(multipliers, cmatrix, &pixel);
+          let ll = roundtrip_gamma(ll);
+          let (outrf,outgf,outbf) = lab_to_rgb(rgbmatrix, &[ll,la,lb]);
+
+          let outrf = apply_srgb_gamma(outrf);
+          let outgf = apply_srgb_gamma(outgf);
+          let outbf = apply_srgb_gamma(outbf);
+
+          // test output 16 bit
+          let outr = output16bit(outrf) as u16;
+          let outg = output16bit(outgf) as u16;
+          let outb = output16bit(outbf) as u16;
+
+          // FIXME: 16bit full color conversion has off-by-one roundtrip only
+          assert_offby((outr, outg, outb), (r, g, b), 1, 1);
 
           // test output 8 bit
           let r = r >> 8;
