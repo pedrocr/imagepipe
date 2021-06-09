@@ -68,11 +68,9 @@ pub fn apply_srgb_gamma(v: f32) -> f32 {
   }
 }
 
-// 20 bit precision is needed to get all the RGB<->XYZ<->Lab conversions to
-// roundtrip which results in a 4MB lookup table which isn't *too* bad. It may
-// be possible to make it smaller by doing some kind of cheap non-linear
-// transform to the keys to allocate more bits to the areas that need it most.
-static XYZ_LAB_TRANSFORM_MAX: usize = (1 << 20) - 1;
+// With interpolation an 11 bit table is enough, but since this is small enough
+// use 12 bits to be a little on the safe side.
+static XYZ_LAB_TRANSFORM_MAX: usize = (1 << 12) - 1;
 lazy_static! {
   static ref XYZ_LAB_TRANSFORM_LOOKUP: Vec<f32> =
     create_xyz_lab_transform_table(XYZ_LAB_TRANSFORM_MAX);
@@ -81,12 +79,12 @@ lazy_static! {
 // FIXME: In the future when floats and loops are stable in const fn get rid of
 //        lazy_static and have the table be generated at compile time instead.
 fn create_xyz_lab_transform_table(max: usize) -> Vec<f32> {
-  let mut lookup: Vec<f32> = vec![0.0; max+1];
+  let mut lookup: Vec<f32> = Vec::with_capacity(max+2);
   let e = 216.0 / 24389.0;
   let k = 24389.0 / 27.0;
-  for i in 0..=max {
+  for i in 0..=(max+1) {
     let v = (i as f32) / (max as f32);
-    lookup[i] = if v > e {v.cbrt()} else {(k*v + 16.0) / 116.0};
+    lookup.push(if v > e {v.cbrt()} else {(k*v + 16.0) / 116.0});
   }
   lookup
 }
@@ -94,7 +92,13 @@ fn create_xyz_lab_transform_table(max: usize) -> Vec<f32> {
 #[inline(always)]
 fn xyz_to_lab_transform(val: f32) -> f32 {
   if val > 0.0 && val < 1.0 {
-    XYZ_LAB_TRANSFORM_LOOKUP[(val * XYZ_LAB_TRANSFORM_MAX as f32) as usize]
+    let pos = val * XYZ_LAB_TRANSFORM_MAX as f32;
+    let key = pos as usize;
+    let base = pos.trunc();
+    let a = pos - base;
+    let v1 = XYZ_LAB_TRANSFORM_LOOKUP[key];
+    let v2 = XYZ_LAB_TRANSFORM_LOOKUP[key+1];
+    v1 + a * (v2 - v1)
   } else {
     let e = 216.0 / 24389.0;
     let k = 24389.0 / 27.0;
