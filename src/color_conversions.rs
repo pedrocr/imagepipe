@@ -68,15 +68,43 @@ pub fn apply_srgb_gamma(v: f32) -> f32 {
   }
 }
 
+// 20 bit precision is needed to get all the RGB<->XYZ<->Lab conversions to
+// roundtrip which results in a 4MB lookup table which isn't *too* bad. It may
+// be possible to make it smaller by doing some kind of cheap non-linear
+// transform to the keys to allocate more bits to the areas that need it most.
+static XYZ_LAB_TRANSFORM_MAXVALS: usize = 1 << 20;
+lazy_static! {
+  static ref XYZ_LAB_TRANSFORM_LOOKUP: Vec<f32> = {
+    let mut lookup: Vec<f32> = vec![0.0; XYZ_LAB_TRANSFORM_MAXVALS+1];
+    let e = 216.0 / 24389.0;
+    let k = 24389.0 / 27.0;
+    for i in 0..(XYZ_LAB_TRANSFORM_MAXVALS+1) {
+      let v = (i as f32) / (XYZ_LAB_TRANSFORM_MAXVALS as f32);
+      lookup[i] = if v > e {v.cbrt()} else {(k*v + 16.0) / 116.0};
+    }
+    lookup
+  };
+}
+
+#[inline(always)]
+fn xyz_to_lab_transform(val: f32) -> f32 {
+  if val > 0.0 && val < 1.0 {
+    XYZ_LAB_TRANSFORM_LOOKUP[(val * XYZ_LAB_TRANSFORM_MAXVALS as f32) as usize]
+  } else {
+    let e = 216.0 / 24389.0;
+    let k = 24389.0 / 27.0;
+    if val > e {val.cbrt()} else {(k*val + 16.0) / 116.0}
+  }
+}
+
 #[inline(always)]
 pub fn xyz_to_lab(x: f32, y: f32, z: f32) -> (f32,f32,f32) {
   let (xw, yw, zw) = SRGB_D65_XYZ_WHITE;
   let (xr, yr, zr) = (x/xw, y/yw, z/zw);
-  let e = 216.0 / 24389.0;
-  let k = 24389.0 / 27.0;
-  let fx = if xr > e {xr.cbrt()} else {(k*xr + 16.0) / 116.0};
-  let fy = if yr > e {yr.cbrt()} else {(k*yr + 16.0) / 116.0};
-  let fz = if zr > e {zr.cbrt()} else {(k*zr + 16.0) / 116.0};
+
+  let fx = xyz_to_lab_transform(xr);
+  let fy = xyz_to_lab_transform(yr);
+  let fz = xyz_to_lab_transform(zr);
 
   let l = 116.0 * fy - 16.0;
   let a = 500.0 * (fx - fy);
