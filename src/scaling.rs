@@ -1,5 +1,5 @@
 use crate::buffer::*;
-use crate::pipeline::SRGBImage;
+use crate::pipeline::{SRGBImage, SRGBImage16};
 use rawloader::CFA;
 use num_traits::cast::AsPrimitive;
 use rayon::prelude::*;
@@ -121,6 +121,17 @@ pub fn scale_down_srgb(buf: &SRGBImage, nwidth: usize, nheight: usize) -> SRGBIm
   let data = scale_down_buffer(&buf.data, buf.width, buf.height, nwidth, nheight, 3, None);
 
   SRGBImage {
+    width: nwidth,
+    height: nheight,
+    data,
+  }
+}
+
+pub fn scale_down_srgb16(buf: &SRGBImage16, nwidth: usize, nheight: usize) -> SRGBImage16 {
+  log::debug!("Scaling SRGBImage from {}x{} to {}x{}", buf.width, buf.height, nwidth, nheight);
+  let data = scale_down_buffer(&buf.data, buf.width, buf.height, nwidth, nheight, 3, None);
+
+  SRGBImage16 {
     width: nwidth,
     height: nheight,
     data,

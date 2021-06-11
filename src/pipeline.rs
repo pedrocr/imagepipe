@@ -29,6 +29,17 @@ pub struct SRGBImage {
   pub data: Vec<u8>,
 }
 
+/// A RawImage processed into a full 16bit sRGB image with levels and gamma
+///
+/// The data is a Vec<u16> width width*height*3 elements, where each element is a value
+/// between 0 and 65535 with the intensity of the color channel with gamma applied
+#[derive(Debug, Clone)]
+pub struct SRGBImage16 {
+  pub width: usize,
+  pub height: usize,
+  pub data: Vec<u16>,
+}
+
 pub type PipelineCache = MultiCache<BufHash, OpBuffer>;
 pub type OtherImage = DynamicImage;
 
@@ -280,7 +291,7 @@ impl Pipeline {
   }
 
   pub fn output_8bit(&mut self, cache: Option<&PipelineCache>) -> Result<SRGBImage, String> {
-    // If the image is 8bit and we haven't changed it yet there's no need to go
+    // If the image is raster and we haven't changed it yet there's no need to go
     // through the whole pipeline. Just go straight to 8bit using the image
     // crate and resize if needed
     if let ImageSource::Other(ref image) = self.globals.image {
@@ -318,6 +329,52 @@ impl Pipeline {
     });
 
     Ok(SRGBImage{
+      width: buffer.width,
+      height: buffer.height,
+      data: image,
+    })
+    })
+  }
+
+  pub fn output_16bit(&mut self, cache: Option<&PipelineCache>) -> Result<SRGBImage16, String> {
+    // If the image is raster and we haven't changed it yet there's no need to go
+    // through the whole pipeline. Just go straight to 16bit using the image
+    // crate and resize if needed
+    if let ImageSource::Other(ref image) = self.globals.image {
+      if self.globals.settings.use_fastpath && self.default_ops() {
+        return Ok(do_timing!("total output_16bit_fastpath()", {
+        let rgb = image.to_rgb16();
+        let (width, height) = (rgb.width() as usize, rgb.height() as usize);
+        let out = SRGBImage16{
+          width,
+          height,
+          data: rgb.into_raw(),
+        };
+        let (_, nwidth, nheight) = crate::scaling::calculate_scaling(
+          out.width, out.height,
+          self.globals.settings.maxwidth, self.globals.settings.maxheight
+        );
+        if nwidth != out.width || nheight != out.height {
+          crate::scaling::scale_down_srgb16(&out, nwidth, nheight)
+        } else {
+          out
+        }
+        }))
+      }
+    }
+
+    do_timing!("total output_16bit()", {
+    let buffer = self.run(cache);
+
+    let image = do_timing!("  8 bit conversion", {
+      let mut image = vec![0 as u16; buffer.width*buffer.height*3];
+      for (o, i) in image.chunks_exact_mut(1).zip(buffer.data.iter()) {
+        o[0] = output16bit(*i);
+      }
+      image
+    });
+
+    Ok(SRGBImage16{
       width: buffer.width,
       height: buffer.height,
       data: image,
