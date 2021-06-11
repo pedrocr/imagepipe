@@ -70,6 +70,7 @@ pub struct PipelineSettings {
   pub maxwidth: usize,
   pub maxheight: usize,
   pub linear: bool,
+  pub use_fastpath: bool,
 }
 
 impl PipelineSettings{
@@ -208,7 +209,7 @@ impl Pipeline {
     Ok(Pipeline {
       globals: PipelineGlobals {
         image: img,
-        settings: PipelineSettings {maxwidth, maxheight, linear},
+        settings: PipelineSettings {maxwidth, maxheight, linear, use_fastpath: true},
       },
       ops,
     })
@@ -233,7 +234,7 @@ impl Pipeline {
     Pipeline {
       globals: PipelineGlobals {
         image: img,
-        settings: PipelineSettings {maxwidth, maxheight, linear},
+        settings: PipelineSettings {maxwidth, maxheight, linear, use_fastpath: true},
       },
       ops: serial.1,
     }
@@ -283,7 +284,7 @@ impl Pipeline {
     // through the whole pipeline. Just go straight to 8bit using the image
     // crate and resize if needed
     if let ImageSource::Other(ref image) = self.globals.image {
-      if self.default_ops() {
+      if self.globals.settings.use_fastpath && self.default_ops() {
         return Ok(do_timing!("total output_8bit_fastpath()", {
         let rgb = image.to_rgb8();
         let (width, height) = (rgb.width() as usize, rgb.height() as usize);
