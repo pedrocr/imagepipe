@@ -71,6 +71,17 @@ impl<'a> ImageOp<'a> for OpTransform {
       Arc::new(rotate_buffer(&buf, &orientation))
     }
   }
+
+  fn transform_forward(&self, width: usize, height: usize) -> (usize, usize) {
+    match self.rotation {
+      Rotation::Rotate90 | Rotation::Rotate270 => (height, width),
+      _ => (width, height),
+    }
+  }
+
+  fn transform_reverse(&self, width: usize, height: usize) -> (usize, usize) {
+    self.transform_forward(width, height)
+  }
 }
 
 fn rotate_buffer(buf: &OpBuffer, orientation: &Orientation) -> OpBuffer {

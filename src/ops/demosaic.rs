@@ -25,10 +25,21 @@ impl OpDemosaic {
 impl<'a> ImageOp<'a> for OpDemosaic {
   fn name(&self) -> &str {"demosaic"}
   fn run(&self, pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
-    let (scale, nwidth, nheight) = crate::scaling::calculate_scaling(
-      buf.width, buf.height,
-      pipeline.settings.maxwidth, pipeline.settings.maxheight
-    );
+    let nwidth = pipeline.settings.demosaic_width;
+    let nheight = pipeline.settings.demosaic_height;
+
+    let scale = if nwidth == buf.width && nheight == buf.height {
+      1.0
+    } else {
+      // Do the calculations manually to avoid off-by-one errors from floating point rounding
+      let xscale = buf.width as f32 / nwidth as f32;
+      let yscale = buf.height as f32 / nheight as f32;
+      if yscale > xscale {
+        yscale
+      } else {
+        xscale
+      }
+    };
 
     let cfa = CFA::new(&self.cfa);
     let minscale = match cfa.width {

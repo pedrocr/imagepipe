@@ -49,6 +49,22 @@ pub enum ImageSource {
   Other(OtherImage),
 }
 
+impl ImageSource {
+  fn width(&self) -> usize {
+    match self {
+      Self::Raw(raw) => raw.width,
+      Self::Other(img) => img.width() as usize,
+    }
+  }
+
+  fn height(&self) -> usize {
+    match self {
+      Self::Raw(raw) => raw.height,
+      Self::Other(img) => img.height() as usize,
+    }
+  }
+}
+
 macro_rules! do_timing {
   ($name:expr, $body:expr) => {
     {
@@ -74,12 +90,22 @@ pub trait ImageOp<'a>: Debug+Serialize+Deserialize<'a> {
     hasher.write(self.name().as_bytes()).unwrap();
     hasher.from_serialize(self);
   }
+  // What size is the output the operation creates given its input
+  fn transform_forward(&self, width: usize, height: usize) -> (usize, usize) {
+    (width, height)
+  }
+  // What size is the input the operation needs to create a given output
+  fn transform_reverse(&self, width: usize, height: usize) -> (usize, usize) {
+    (width, height)
+  }
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]
 pub struct PipelineSettings {
   pub maxwidth: usize,
   pub maxheight: usize,
+  pub demosaic_width: usize,
+  pub demosaic_height: usize,
   pub linear: bool,
   pub use_fastpath: bool,
 }
@@ -89,6 +115,8 @@ impl PipelineSettings {
     Self {
       maxwidth: 0,
       maxheight: 0,
+      demosaic_width: 0,
+      demosaic_height: 0,
       linear: false,
       use_fastpath: true,
     }
@@ -178,6 +206,22 @@ macro_rules! all_ops {
   }
 }
 
+macro_rules! all_ops_reverse {
+  ($ops:expr, |$x:pat, $i:ident| $body:expr) => {
+    for_vals!([
+      $ops.transform,
+      $ops.gamma,
+      $ops.fromlab,
+      $ops.basecurve,
+      $ops.tolab,
+      $ops.demosaic,
+      $ops.gofloat
+    ] |$x, $i| {
+      $body
+    });
+  }
+}
+
 #[derive(Debug)]
 pub struct Pipeline {
   pub globals: PipelineGlobals,
@@ -246,6 +290,28 @@ impl Pipeline {
 
   pub fn run(&mut self, cache: Option<&PipelineCache>) -> Arc<OpBuffer> {
     do_timing!("  total pipeline", {
+    // Calculate what size of image we should scale down to at the demosaic stage
+    let mut width = self.globals.image.width();
+    let mut height = self.globals.image.height();
+    all_ops!(self.ops, |ref op, _i| {
+      let (w, h) = op.transform_forward(width, height);
+      width = w;
+      height = h;
+    });
+    log::debug!("Maximum possible image size is {}x{}", width, height);
+    let maxwidth = self.globals.settings.maxwidth;
+    let maxheight = self.globals.settings.maxheight;
+    let (_, mut width, mut height) =
+      crate::scaling::calculate_scaling(width, height, maxwidth, maxheight);
+    all_ops_reverse!(self.ops, |ref op, _i| {
+      let (w, h) = op.transform_reverse(width, height);
+      width = w;
+      height = h;
+    });
+    log::debug!("Final image size is {}x{}", width, height);
+    self.globals.settings.demosaic_width = width;
+    self.globals.settings.demosaic_height = height;
+
     // Generate all the hashes for the operations
     let mut hasher = BufHasher::new();
     let mut ophashes = Vec::new();
