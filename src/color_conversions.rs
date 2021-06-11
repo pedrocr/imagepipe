@@ -320,6 +320,7 @@ pub fn output16bit(v: f32) -> u16 {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use image::{ImageBuffer, DynamicImage};
 
   #[test]
   fn roundtrip_8bit() {
@@ -332,6 +333,40 @@ mod tests {
   fn roundtrip_16bit() {
     for i in 0..u16::MAX {
       assert_eq!(i, output16bit(input16bit(i)));
+    }
+  }
+
+  // Make sure all 8 bit values roundtrip when read as 16 bits from the image crate
+  #[test]
+  fn roundtrip_8bit_values_image_crate() {
+    let mut image_data: Vec<u8> = vec![0; 10*10*3];
+    for v in 0..=u8::MAX {
+      image_data.push(v);
+    }
+    let image = ImageBuffer::from_raw(10, 10, image_data.clone()).unwrap();
+    let out = DynamicImage::ImageRgb8(image).into_rgb16().into_raw();
+
+    for (vin, vout) in image_data.into_iter().zip(out.into_iter()) {
+      let f = input16bit(vout);
+      let out = output8bit(f);
+      assert_eq!(out, vin);
+    }
+  }
+
+  // Make sure all 16 bit values roundtrip when read as 16 bits from the image crate
+  #[test]
+  fn roundtrip_16bit_values_image_crate() {
+    let mut image_data: Vec<u16> = vec![0; 148*148*3];
+    for v in 0..=u16::MAX {
+      image_data.push(v);
+    }
+    let image = ImageBuffer::from_raw(10, 10, image_data.clone()).unwrap();
+    let out = DynamicImage::ImageRgb16(image).into_rgb16().into_raw();
+
+    for (vin, vout) in image_data.into_iter().zip(out.into_iter()) {
+      let f = input16bit(vout);
+      let out = output16bit(f);
+      assert_eq!(out, vin);
     }
   }
 
