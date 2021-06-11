@@ -1,5 +1,4 @@
 use crate::opbasics::*;
-use image::{DynamicImage};
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpGoFloat {
@@ -162,45 +161,34 @@ impl OpGoFloat {
   }
 
   fn run_other(&self, img: &OtherImage) -> Arc<OpBuffer> {
-    Arc::new(match img {
-      DynamicImage::ImageLuma8(_) |
-      DynamicImage::ImageLumaA8(_) |
-      DynamicImage::ImageRgb8(_) |
-      DynamicImage::ImageRgba8(_) |
-      DynamicImage::ImageBgra8(_) => {
-        let img = img.to_rgb8();
-        let owidth = img.width() as usize;
-        let oheight = img.height() as usize;
-        let (x, y, width, height) = self.size_image(owidth, oheight);
-        let data = img.into_raw();
-        let mut out = OpBuffer::new(width, height, 4, false);
-        out.mutate_lines(&(|line: &mut [f32], row| {
-          for (o, i) in line.chunks_exact_mut(4).zip(data[(owidth*(row+y)+x)*3..].chunks_exact(3)) {
-            o[0] = expand_srgb_gamma(input8bit(i[0]));
-            o[1] = expand_srgb_gamma(input8bit(i[1]));
-            o[2] = expand_srgb_gamma(input8bit(i[2]));
-            o[3] = 0.0;
-          }
-        }));
-        out
-      },
-      _ => {
-        let img = img.to_rgb16();
-        let owidth = img.width() as usize;
-        let oheight = img.height() as usize;
-        let (x, y, width, height) = self.size_image(owidth, oheight);
-        let data = img.into_raw();
-        let mut out = OpBuffer::new(width, height, 4, false);
-        out.mutate_lines(&(|line: &mut [f32], row| {
-          for (o, i) in line.chunks_exact_mut(4).zip(data[(owidth*(row+y)+x)*3..].chunks_exact(3)) {
-            o[0] = input16bit(i[0]);
-            o[1] = input16bit(i[1]);
-            o[2] = input16bit(i[2]);
-            o[3] = 0.0;
-          }
-        }));
-        out
-      },
-    })
+    let owidth = img.width() as usize;
+    let oheight = img.height() as usize;
+    let (x, y, width, height) = self.size_image(owidth, oheight);
+    let mut out = OpBuffer::new(width, height, 4, false);
+    let bits_per_channel = img.color().bits_per_pixel() / img.color().channel_count() as u16;
+
+    if bits_per_channel == 8 {
+      let data = img.to_rgb8().into_raw();
+      out.mutate_lines(&(|line: &mut [f32], row| {
+        for (o, i) in line.chunks_exact_mut(4).zip(data[(owidth*(row+y)+x)*3..].chunks_exact(3)) {
+          o[0] = expand_srgb_gamma(input8bit(i[0]));
+          o[1] = expand_srgb_gamma(input8bit(i[1]));
+          o[2] = expand_srgb_gamma(input8bit(i[2]));
+          o[3] = 0.0;
+        }
+      }));
+    } else {
+      let data = img.to_rgb16().into_raw();
+      out.mutate_lines(&(|line: &mut [f32], row| {
+        for (o, i) in line.chunks_exact_mut(4).zip(data[(owidth*(row+y)+x)*3..].chunks_exact(3)) {
+          o[0] = input16bit(i[0]);
+          o[1] = input16bit(i[1]);
+          o[2] = input16bit(i[2]);
+          o[3] = 0.0;
+        }
+      }));
+    }
+
+    Arc::new(out)
   }
 }

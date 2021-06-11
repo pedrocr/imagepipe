@@ -18,9 +18,13 @@ serde_derive = "1"
 serde_yaml = "0.8"
 bincode = "1"
 blake3 = "0.3"
-image = "0.23"
 log = "0.4"
 num-traits = "0.2"
+
+[dependencies.image]
+version = "0.23"
+git = "https://github.com/pedrocr/image"
+branch = "dynimage_width_height"
 
 [dependencies.rawloader]
 version = "0.37"
