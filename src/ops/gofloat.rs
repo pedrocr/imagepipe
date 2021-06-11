@@ -48,6 +48,9 @@ impl OpGoFloat {
 impl<'a> ImageOp<'a> for OpGoFloat {
   fn name(&self) -> &str {"gofloat"}
   fn run(&self, pipeline: &PipelineGlobals, _buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
+    // FIXME: Doing all the transforms with lookup tables instead of f32 calcs
+    //        on every pixel is much faster
+
     match &pipeline.image {
       ImageSource::Raw(img) => {
         self.run_raw(img)
@@ -173,23 +176,13 @@ impl OpGoFloat {
     let height = oheight - cmp::min(self.crop_top + self.crop_bottom, oheight-10);
     let data = img.into_raw();
 
-    // Create complete lookup tables to speed up the transformation
-    let mut lookupr = vec![0.0; 1 << 16];
-    let mut lookupg = vec![0.0; 1 << 16];
-    let mut lookupb = vec![0.0; 1 << 16];
-    for i in 0..1<<16 {
-      lookupr[i] = expand_srgb_gamma(((i as f32 - mins[0]) / ranges[0]).min(1.0));
-      lookupg[i] = expand_srgb_gamma(((i as f32 - mins[1]) / ranges[1]).min(1.0));
-      lookupb[i] = expand_srgb_gamma(((i as f32 - mins[2]) / ranges[2]).min(1.0));
-    }
-
     // Finally create the RGBA buffer from it
     let mut out = OpBuffer::new(width, height, 4, false);
     out.mutate_lines(&(|line: &mut [f32], row| {
       for (o, i) in line.chunks_exact_mut(4).zip(data[(owidth*(row+y)+x)*3..].chunks_exact(3)) {
-        o[0] = lookupr[i[0] as usize];
-        o[1] = lookupg[i[1] as usize];
-        o[2] = lookupb[i[2] as usize];
+        o[0] = expand_srgb_gamma(((i[0] as f32 - mins[0]) / ranges[0]).min(1.0));
+        o[1] = expand_srgb_gamma(((i[1] as f32 - mins[1]) / ranges[1]).min(1.0));
+        o[2] = expand_srgb_gamma(((i[2] as f32 - mins[2]) / ranges[2]).min(1.0));
         o[3] = 0.0;
       }
     }));
