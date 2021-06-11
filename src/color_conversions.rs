@@ -84,43 +84,52 @@ pub fn apply_srgb_gamma(v: f32) -> f32 {
   }
 }
 
-// With interpolation an 11 bit table is enough for all the individual roundtrips
-// 13 bits are needed for an 8 bit source image to fully roundtrip:
-//   sRGBGamma->sRGB->XYZ->Lab->XYZ->sRGB->sRGBGamma
-static XYZ_LAB_TRANSFORM_MAX: usize = (1 << 13) - 1;
-lazy_static! {
-  static ref XYZ_LAB_TRANSFORM_LOOKUP: Vec<f32> =
-    create_xyz_lab_transform_table(XYZ_LAB_TRANSFORM_MAX);
+// Encapsulate a given transformation including a lookup table for speedup
+struct TransformLookup {
+  max: f32,
+  table: Vec<f32>,
+  transform: Box<dyn Fn(f32) -> f32+Sync>,
+}
+
+impl TransformLookup {
+  fn new<F>(maxbits: usize, transform: F) -> Self
+    where F : Fn(f32) -> f32+Sync+'static {
+    let max = (1 << maxbits) - 1;
+    let mut table: Vec<f32> = Vec::with_capacity(max+2);
+    for i in 0..=(max+1) {
+      let v = (i as f32) / (max as f32);
+      table.push(transform(v));
+    }
+    Self {
+      max: max as f32,
+      table,
+      transform: Box::new(transform),
+    }
+  }
+
+  fn lookup(&self, val: f32) -> f32 {
+    if val < 0.0 || val > 1.0 {
+      (self.transform)(val)
+    } else {
+      let pos = val * self.max as f32;
+      let key = pos as usize;
+      let base = pos.trunc();
+      let a = pos - base;
+      let v1 = self.table[key];
+      let v2 = self.table[key+1];
+      v1 + a * (v2 - v1)
+    }
+  }
 }
 
 // FIXME: In the future when floats and loops are stable in const fn get rid of
 //        lazy_static and have the table be generated at compile time instead.
-fn create_xyz_lab_transform_table(max: usize) -> Vec<f32> {
-  let mut lookup: Vec<f32> = Vec::with_capacity(max+2);
-  let e = 216.0 / 24389.0;
-  let k = 24389.0 / 27.0;
-  for i in 0..=(max+1) {
-    let v = (i as f32) / (max as f32);
-    lookup.push(if v > e {v.cbrt()} else {(k*v + 16.0) / 116.0});
-  }
-  lookup
-}
-
-#[inline(always)]
-fn xyz_to_lab_transform(val: f32) -> f32 {
-  if val > 0.0 && val < 1.0 {
-    let pos = val * XYZ_LAB_TRANSFORM_MAX as f32;
-    let key = pos as usize;
-    let base = pos.trunc();
-    let a = pos - base;
-    let v1 = XYZ_LAB_TRANSFORM_LOOKUP[key];
-    let v2 = XYZ_LAB_TRANSFORM_LOOKUP[key+1];
-    v1 + a * (v2 - v1)
-  } else {
+lazy_static! {
+  static ref XYZ_LAB_TRANSFORM: TransformLookup = TransformLookup::new(13, |v: f32| {
     let e = 216.0 / 24389.0;
     let k = 24389.0 / 27.0;
-    if val > e {val.cbrt()} else {(k*val + 16.0) / 116.0}
-  }
+    if v > e {v.cbrt()} else {(k*v + 16.0) / 116.0}
+  });
 }
 
 #[inline(always)]
@@ -128,9 +137,9 @@ pub fn xyz_to_lab(x: f32, y: f32, z: f32) -> (f32,f32,f32) {
   let (xw, yw, zw) = *SRGB_D65_XYZ_WHITE;
   let (xr, yr, zr) = (x/xw, y/yw, z/zw);
 
-  let fx = xyz_to_lab_transform(xr);
-  let fy = xyz_to_lab_transform(yr);
-  let fz = xyz_to_lab_transform(zr);
+  let fx = XYZ_LAB_TRANSFORM.lookup(xr);
+  let fy = XYZ_LAB_TRANSFORM.lookup(yr);
+  let fz = XYZ_LAB_TRANSFORM.lookup(zr);
 
   let l = 116.0 * fy - 16.0;
   let a = 500.0 * (fx - fy);
