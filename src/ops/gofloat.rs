@@ -1,4 +1,5 @@
 use crate::opbasics::*;
+use image::{DynamicImage};
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpGoFloat {
@@ -37,8 +38,8 @@ impl OpGoFloat {
           crop_bottom: 0,
           crop_left:   0,
           is_cfa: false,
-          blacklevels: [0.0, 0.0, 0.0, 0.0],
-          whitelevels: [65535.0, 65535.0, 65535.0, 65535.0],
+          blacklevels: [0.0, 0.0, 0.0, 0.0], // Unused
+          whitelevels: [0.0, 0.0, 0.0, 0.0], // Unused
         }
       }
     }
@@ -153,40 +154,56 @@ impl OpGoFloat {
     })
   }
 
-  fn run_other(&self, img: &OtherImage) -> Arc<OpBuffer> {
-    // Calculate the levels
-    let mins = self.blacklevels;
-    let ranges = self.whitelevels.iter().enumerate().map(|(i, &x)| {
-      x - mins[i]
-    }).collect::<Vec<f32>>();
-
-    // For now just convert to 16bit RGB all images but in the future treating
-    // the cases individually could save some copying.
-    // It's probably simpler to just wait for the image crate to support f32
-    // channels and then just do the conversion with that.
-    let img = img.to_rgb16();
-
+  fn size_image(&self, owidth: usize, oheight: usize) -> (usize, usize, usize, usize) {
     // Calculate x/y/width/height making sure we get at least a 10x10 "image" to not trip up
     // reasonable assumptions in later ops
-    let owidth = img.width() as usize;
-    let oheight = img.height() as usize;
     let x = cmp::min(self.crop_left, owidth-10);
     let y = cmp::min(self.crop_top, oheight-10);
     let width = owidth - cmp::min(self.crop_left + self.crop_right, owidth-10);
     let height = oheight - cmp::min(self.crop_top + self.crop_bottom, oheight-10);
-    let data = img.into_raw();
+    (x, y, width, height)
+  }
 
-    // Finally create the RGBA buffer from it
-    let mut out = OpBuffer::new(width, height, 4, false);
-    out.mutate_lines(&(|line: &mut [f32], row| {
-      for (o, i) in line.chunks_exact_mut(4).zip(data[(owidth*(row+y)+x)*3..].chunks_exact(3)) {
-        o[0] = expand_srgb_gamma(((i[0] as f32 - mins[0]) / ranges[0]).min(1.0));
-        o[1] = expand_srgb_gamma(((i[1] as f32 - mins[1]) / ranges[1]).min(1.0));
-        o[2] = expand_srgb_gamma(((i[2] as f32 - mins[2]) / ranges[2]).min(1.0));
-        o[3] = 0.0;
-      }
-    }));
-
-    Arc::new(out)
+  fn run_other(&self, img: &OtherImage) -> Arc<OpBuffer> {
+    Arc::new(match img {
+      DynamicImage::ImageLuma8(_) |
+      DynamicImage::ImageLumaA8(_) |
+      DynamicImage::ImageRgb8(_) |
+      DynamicImage::ImageRgba8(_) |
+      DynamicImage::ImageBgra8(_) => {
+        let img = img.to_rgb8();
+        let owidth = img.width() as usize;
+        let oheight = img.height() as usize;
+        let (x, y, width, height) = self.size_image(owidth, oheight);
+        let data = img.into_raw();
+        let mut out = OpBuffer::new(width, height, 4, false);
+        out.mutate_lines(&(|line: &mut [f32], row| {
+          for (o, i) in line.chunks_exact_mut(4).zip(data[(owidth*(row+y)+x)*3..].chunks_exact(3)) {
+            o[0] = expand_srgb_gamma(input8bit(i[0]));
+            o[1] = expand_srgb_gamma(input8bit(i[1]));
+            o[2] = expand_srgb_gamma(input8bit(i[2]));
+            o[3] = 0.0;
+          }
+        }));
+        out
+      },
+      _ => {
+        let img = img.to_rgb16();
+        let owidth = img.width() as usize;
+        let oheight = img.height() as usize;
+        let (x, y, width, height) = self.size_image(owidth, oheight);
+        let data = img.into_raw();
+        let mut out = OpBuffer::new(width, height, 4, false);
+        out.mutate_lines(&(|line: &mut [f32], row| {
+          for (o, i) in line.chunks_exact_mut(4).zip(data[(owidth*(row+y)+x)*3..].chunks_exact(3)) {
+            o[0] = input16bit(i[0]);
+            o[1] = input16bit(i[1]);
+            o[2] = input16bit(i[2]);
+            o[3] = 0.0;
+          }
+        }));
+        out
+      },
+    })
   }
 }
