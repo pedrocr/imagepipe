@@ -303,12 +303,13 @@ impl Pipeline {
     let maxheight = self.globals.settings.maxheight;
     let (mut width, mut height) =
       crate::scaling::scaling_size(width, height, maxwidth, maxheight);
+    log::debug!("Final image size is {}x{}", width, height);
     all_ops_reverse!(self.ops, |ref op, _i| {
       let (w, h) = op.transform_reverse(width, height);
       width = w;
       height = h;
     });
-    log::debug!("Final image size is {}x{}", width, height);
+    log::debug!("Needed image size at demosaic {}x{}", width, height);
     self.globals.settings.demosaic_width = width;
     self.globals.settings.demosaic_height = height;
 

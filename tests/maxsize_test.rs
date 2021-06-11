@@ -50,7 +50,7 @@ fn downscale_keeps_ratio() {
 }
 
 #[test]
-fn rotation_works() {
+fn rotation() {
   let mut pipeline = create_pipeline();
   pipeline.globals.settings.maxwidth = 64;
   pipeline.ops.transform.rotation = Rotation::Rotate90;
@@ -65,4 +65,15 @@ fn rotation_works() {
   pipeline.globals.settings.maxwidth = 256;
   pipeline.ops.transform.rotation = Rotation::Rotate90;
   assert_width(&mut pipeline, 64, 128);
+}
+
+#[test]
+fn crops() {
+  let mut pipeline = create_pipeline();
+  pipeline.globals.settings.maxwidth = 64;
+  pipeline.ops.gofloat.crop_top = 1;
+  pipeline.ops.gofloat.crop_bottom = 1;
+  pipeline.ops.gofloat.crop_left = 1;
+  pipeline.ops.gofloat.crop_right = 1;
+  assert_width(&mut pipeline, 64, 31);
 }

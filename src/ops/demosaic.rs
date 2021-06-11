@@ -59,6 +59,9 @@ impl<'a> ImageOp<'a> for OpDemosaic {
       }
     }
   }
+
+  // We don't transform_reverse as image sizing is relative to the scaling done
+  // at the demosaic step, so whatever scale down is needed can be achieved here
 }
 
 pub fn full(cfa: CFA, buf: &OpBuffer) -> OpBuffer {
