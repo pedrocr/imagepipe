@@ -84,6 +84,17 @@ pub struct PipelineSettings {
   pub use_fastpath: bool,
 }
 
+impl PipelineSettings {
+  fn default() -> Self {
+    Self {
+      maxwidth: 0,
+      maxheight: 0,
+      linear: false,
+      use_fastpath: true,
+    }
+  }
+}
+
 impl PipelineSettings{
   fn hash(&self, hasher: &mut BufHasher) {
     hasher.from_serialize(self);
@@ -184,43 +195,25 @@ impl Pipeline {
     MultiCache::new(size)
   }
 
-  pub fn new_from_file<P: AsRef<Path>>(path: P, maxwidth: usize, maxheight: usize, linear: bool) -> Result<Pipeline, String> {
+  pub fn new_from_file<P: AsRef<Path>>(path: P) -> Result<Pipeline, String> {
     do_timing!("total new_from_file()", {
     if let Ok(img) = do_timing!("  rawloader", rawloader::decode_file(&path)) {
-      Self::new_from_source(ImageSource::Raw(img), maxwidth, maxheight, linear)
+      Self::new_from_source(ImageSource::Raw(img))
     } else if let Ok(img) = do_timing!("  image::open", image::open(&path)) {
-      Self::new_from_source(ImageSource::Other(img), maxwidth, maxheight, linear)
+      Self::new_from_source(ImageSource::Other(img))
     } else {
       Err("imagepipe: Don't know how to decode image".to_string())
     }
     })
   }
 
-  pub fn new_from_source(img: ImageSource, maxwidth: usize, maxheight: usize, linear: bool) -> Result<Pipeline, String> {
-    // Check if the image's orientation results in a rotation that
-    // swaps the maximum width with the maximum height
-    let transpose = match img {
-      ImageSource::Raw(ref img) => {
-        let (transpose, ..) = img.orientation.to_flips();
-        transpose
-      },
-      ImageSource::Other(_) => {
-        false
-      }
-    };
-
-    let (maxwidth, maxheight) = if transpose {
-      (maxheight, maxwidth)
-    } else {
-      (maxwidth, maxheight)
-    };
-
+  pub fn new_from_source(img: ImageSource) -> Result<Pipeline, String> {
     let ops = PipelineOps::new(&img);
 
     Ok(Pipeline {
       globals: PipelineGlobals {
         image: img,
-        settings: PipelineSettings {maxwidth, maxheight, linear, use_fastpath: true},
+        settings: PipelineSettings::default(),
       },
       ops,
     })
@@ -239,13 +232,13 @@ impl Pipeline {
     serde_yaml::to_string(&serial).unwrap()
   }
 
-  pub fn new_from_serial(img: ImageSource, maxwidth: usize, maxheight: usize, linear: bool, serial: String) -> Pipeline {
+  pub fn new_from_serial(img: ImageSource, serial: String) -> Pipeline {
     let serial: (PipelineSerialization, PipelineOps) = serde_yaml::from_str(&serial).unwrap();
 
     Pipeline {
       globals: PipelineGlobals {
         image: img,
-        settings: PipelineSettings {maxwidth, maxheight, linear, use_fastpath: true},
+        settings: PipelineSettings::default(),
       },
       ops: serial.1,
     }
@@ -318,6 +311,7 @@ impl Pipeline {
     }
 
     do_timing!("total output_8bit()", {
+    self.globals.settings.linear = false;
     let buffer = self.run(cache);
 
     let image = do_timing!("  8 bit conversion", {
@@ -364,6 +358,7 @@ impl Pipeline {
     }
 
     do_timing!("total output_16bit()", {
+    self.globals.settings.linear = true;
     let buffer = self.run(cache);
 
     let image = do_timing!("  8 bit conversion", {

@@ -31,7 +31,7 @@ fn pipeline_8bit() -> (Vec<u8>, Pipeline) {
   }
   let image = ImageBuffer::from_raw(4096, 4096, image_data.clone()).unwrap();
   let source = ImageSource::Other(DynamicImage::ImageRgb8(image));
-  let pipeline = Pipeline::new_from_source(source, 0, 0, false).unwrap();
+  let pipeline = Pipeline::new_from_source(source).unwrap();
 
   (image_data, pipeline)
 }
@@ -83,7 +83,7 @@ fn pipeline_16bit(start: (u16, u16, u16)) -> (Option<(u16, u16, u16)>, Vec<u16>,
   }
   let image = ImageBuffer::from_raw(4096, 4096, image_data.clone()).unwrap();
   let source = ImageSource::Other(DynamicImage::ImageRgb16(image));
-  let pipeline = Pipeline::new_from_source(source, 0, 0, false).unwrap();
+  let pipeline = Pipeline::new_from_source(source).unwrap();
 
   (newstart, image_data, pipeline)
 }

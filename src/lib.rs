@@ -18,5 +18,8 @@ mod scaling;
 use std::path::Path;
 
 pub fn simple_decode_8bit<P: AsRef<Path>>(img: P, maxwidth: usize, maxheight: usize) -> Result<SRGBImage, String> {
-  Pipeline::new_from_file(&img, maxwidth, maxheight, false)?.output_8bit(None)
+  let mut pipeline = Pipeline::new_from_file(&img)?;
+  pipeline.globals.settings.maxwidth = maxwidth;
+  pipeline.globals.settings.maxheight = maxheight;
+  pipeline.output_8bit(None)
 }
