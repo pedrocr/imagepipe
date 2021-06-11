@@ -8,10 +8,22 @@ fn create_pipeline() -> Pipeline {
 
 fn assert_width(pipeline: &mut Pipeline, width: usize, height: usize) {
   let decoded = pipeline.output_8bit(None).unwrap();
+  pipeline.globals.settings.use_fastpath = true;
+  assert_eq!(decoded.width, width);
+  assert_eq!(decoded.height, height);
+
+  let decoded = pipeline.output_8bit(None).unwrap();
+  pipeline.globals.settings.use_fastpath = false;
   assert_eq!(decoded.width, width);
   assert_eq!(decoded.height, height);
 
   let decoded = pipeline.output_16bit(None).unwrap();
+  pipeline.globals.settings.use_fastpath = true;
+  assert_eq!(decoded.width, width);
+  assert_eq!(decoded.height, height);
+
+  let decoded = pipeline.output_16bit(None).unwrap();
+  pipeline.globals.settings.use_fastpath = false;
   assert_eq!(decoded.width, width);
   assert_eq!(decoded.height, height);
 }
