@@ -4,7 +4,7 @@ use rawloader::CFA;
 use num_traits::cast::AsPrimitive;
 use rayon::prelude::*;
 
-pub fn calculate_scaling(width: usize, height: usize, maxwidth: usize, maxheight: usize) -> (f32, usize, usize) {
+fn calculate_scaling_total(width: usize, height: usize, maxwidth: usize, maxheight: usize) -> (f32, usize, usize) {
   if maxwidth == 0 && maxheight == 0 {
     (1.0, width, height)
   } else {
@@ -19,6 +19,15 @@ pub fn calculate_scaling(width: usize, height: usize, maxwidth: usize, maxheight
       (xscale, maxwidth, ((height as f32)/xscale) as usize)
     }
   }
+}
+
+pub fn scaling_size(width: usize, height: usize, maxwidth: usize, maxheight: usize) -> (usize, usize) {
+  let (_, width, height) = calculate_scaling_total(width, height, maxwidth, maxheight);
+  (width, height)
+}
+
+pub fn calculate_scale(width: usize, height: usize, maxwidth: usize, maxheight: usize) -> f32 {
+  calculate_scaling_total(width, height, maxwidth, maxheight).0
 }
 
 fn calc_skips(idx: usize, idxmax: usize, skip: f32) -> (usize, usize, f32, f32) {

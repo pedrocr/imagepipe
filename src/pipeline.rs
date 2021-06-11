@@ -301,8 +301,8 @@ impl Pipeline {
     log::debug!("Maximum possible image size is {}x{}", width, height);
     let maxwidth = self.globals.settings.maxwidth;
     let maxheight = self.globals.settings.maxheight;
-    let (_, mut width, mut height) =
-      crate::scaling::calculate_scaling(width, height, maxwidth, maxheight);
+    let (mut width, mut height) =
+      crate::scaling::scaling_size(width, height, maxwidth, maxheight);
     all_ops_reverse!(self.ops, |ref op, _i| {
       let (w, h) = op.transform_reverse(width, height);
       width = w;
@@ -363,7 +363,7 @@ impl Pipeline {
           height,
           data: rgb.into_raw(),
         };
-        let (_, nwidth, nheight) = crate::scaling::calculate_scaling(
+        let (nwidth, nheight) = crate::scaling::scaling_size(
           out.width, out.height,
           self.globals.settings.maxwidth, self.globals.settings.maxheight
         );
@@ -410,7 +410,7 @@ impl Pipeline {
           height,
           data: rgb.into_raw(),
         };
-        let (_, nwidth, nheight) = crate::scaling::calculate_scaling(
+        let (nwidth, nheight) = crate::scaling::scaling_size(
           out.width, out.height,
           self.globals.settings.maxwidth, self.globals.settings.maxheight
         );
