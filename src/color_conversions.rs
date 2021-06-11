@@ -64,26 +64,6 @@ pub fn lab_to_rgb(rgbmatrix: [[f32;3];3], pixin: &[f32]) -> (f32, f32, f32) {
     (r, g, b)
 }
 
-/// Remove sRGB gamma from a value
-#[inline(always)]
-pub fn expand_srgb_gamma(v: f32) -> f32 {
-  if v < 0.04045 {
-      v / 12.92
-  } else {
-      ((v + 0.055) / 1.055).powf(2.4)
-  }
-}
-
-/// Apply sRGB gamma to a value
-#[inline(always)]
-pub fn apply_srgb_gamma(v: f32) -> f32 {
-  if v < 0.0031308 {
-    v * 12.92
-  } else {
-    1.055 * v.powf(1.0 / 2.4) - 0.055
-  }
-}
-
 // Encapsulate a given transformation including a lookup table for speedup
 struct TransformLookup {
   max: f32,
@@ -130,6 +110,34 @@ lazy_static! {
     let k = 24389.0 / 27.0;
     if v > e {v.cbrt()} else {(k*v + 16.0) / 116.0}
   });
+
+  static ref SRGB_GAMMA_REVERSE: TransformLookup = TransformLookup::new(18, |v: f32| {
+    if v < 0.04045 {
+        v / 12.92
+    } else {
+        ((v + 0.055) / 1.055).powf(2.4)
+    }
+  });
+
+  static ref SRGB_GAMMA_TRANSFORM: TransformLookup = TransformLookup::new(18, |v: f32| {
+    if v < 0.0031308 {
+      v * 12.92
+    } else {
+      1.055 * v.powf(1.0 / 2.4) - 0.055
+    }
+  });
+}
+
+/// Remove sRGB gamma from a value
+#[inline(always)]
+pub fn expand_srgb_gamma(v: f32) -> f32 {
+  SRGB_GAMMA_REVERSE.lookup(v)
+}
+
+/// Apply sRGB gamma to a value
+#[inline(always)]
+pub fn apply_srgb_gamma(v: f32) -> f32 {
+  SRGB_GAMMA_TRANSFORM.lookup(v)
 }
 
 #[inline(always)]
