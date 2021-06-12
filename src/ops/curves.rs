@@ -14,20 +14,14 @@ impl OpBaseCurve {
       ImageSource::Raw(_) => {
         OpBaseCurve{
           exposure: 0.0,
-          points: vec![
-            (0.00, 0.00),
-            (0.50, 0.60), // Slopes the curve to go from the linear raw to a more natural look
-            (1.00, 1.00),
-          ],
+          // Slopes the curve to go from the linear raw to a more natural look
+          points: vec![(0.50, 0.60)],
         }
       },
       ImageSource::Other(_) => {
         OpBaseCurve{
           exposure: 0.0,
-          points: vec![
-            (0.00, 0.00),
-            (1.00, 1.00),
-          ],
+          points: vec![],
         }
       }
     }
@@ -37,13 +31,15 @@ impl OpBaseCurve {
 impl<'a> ImageOp<'a> for OpBaseCurve {
   fn name(&self) -> &str {"basecurve"}
   fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
-    if self.points.len() <= 2 && self.exposure.abs() < 0.001 {
+    if self.points.len() == 0 && self.exposure.abs() < 0.001 {
       return buf
     }
 
-    let func = SplineFunc::new(self.points.iter().map(|(from, to)| {
-	  (*from, to * self.exposure.exp2())
-    }).collect());
+    let mut final_points = self.points.clone();
+    for (_, to) in final_points.iter_mut() {
+      *to = *to * self.exposure.exp2();
+    }
+    let func = SplineFunc::new(&final_points);
 
     Arc::new(buf.mutate_lines_copying(&(|line: &mut [f32], _| {
       for pix in line.chunks_exact_mut(3) {
@@ -55,7 +51,7 @@ impl<'a> ImageOp<'a> for OpBaseCurve {
 
 impl OpBaseCurve {
   pub fn get_spline(&self) -> SplineFunc {
-    SplineFunc::new(self.points.clone())
+    SplineFunc::new(&self.points)
   }
 }
 
@@ -69,8 +65,11 @@ pub struct SplineFunc {
 
 impl SplineFunc {
   // Monotone cubic interpolation code adapted from the Javascript example in Wikipedia
-  fn new(points: Vec<(f32,f32)>) -> SplineFunc {
-    if points.len() < 2 { panic!("Need at least 2 points for Spline"); }
+  fn new(p: &[(f32,f32)]) -> SplineFunc {
+    let mut points = Vec::new();
+    points.push((0.0, 0.0));
+    points.extend_from_slice(p);
+    points.push((1.0, 1.0));
 
     // Get consecutive differences and slopes
     let mut dxs = Vec::new();
