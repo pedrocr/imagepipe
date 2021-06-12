@@ -56,9 +56,8 @@ impl OpToLab {
     }
   }
 
-  pub fn set_temp(&mut self, temp: u32, tint: u32) {
-    let temp = temp as f32;
-    let tint = (tint as f32) / 10000.0;
+  pub fn set_temp(&mut self, temp: f32, tint: f32) {
+    let tint = tint / 10000.0;
 
     let xyz = temp_to_xyz(temp);
     let xyz = [xyz[0], xyz[1]/tint, xyz[2]];
@@ -72,7 +71,7 @@ impl OpToLab {
     self.wb_coeffs = normalize_wbs(self.wb_coeffs);
   }
 
-  pub fn get_temp(&self) -> (u32, u32) {
+  pub fn get_temp(&self) -> (f32, f32) {
     let mut xyz = [0.0; 3];
     for i in 0..3 {
       for j in 0..4 {
@@ -83,7 +82,7 @@ impl OpToLab {
       }
     }
     let (temp, tint) = xyz_to_temp(xyz);
-    (temp as u32, (tint*10000.0) as u32)
+    (temp, tint*10000.0)
   }
 }
 
