@@ -90,6 +90,11 @@ pub trait ImageOp<'a>: Debug+Serialize+Deserialize<'a> {
     hasher.write(self.name().as_bytes()).unwrap();
     hasher.from_serialize(self);
   }
+  fn shash(&self) -> BufHash {
+    let mut selfhasher = BufHasher::new();
+    selfhasher.from_serialize(self);
+    selfhasher.result()
+  }
   // What size is the output the operation creates given its input
   fn transform_forward(&self, width: usize, height: usize) -> (usize, usize) {
     (width, height)
