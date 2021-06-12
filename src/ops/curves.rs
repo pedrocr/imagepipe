@@ -53,8 +53,14 @@ impl<'a> ImageOp<'a> for OpBaseCurve {
   }
 }
 
+impl OpBaseCurve {
+  pub fn get_spline(&self) -> SplineFunc {
+    SplineFunc::new(self.points.clone())
+  }
+}
 
-struct SplineFunc {
+
+pub struct SplineFunc {
   points: Vec<(f32,f32)>,
   c1s: Vec<f32>,
   c2s: Vec<f32>,
@@ -114,7 +120,7 @@ impl SplineFunc {
     }
   }
 
-  fn interpolate(&self, val: f32) -> f32 {
+  pub fn interpolate(&self, val: f32) -> f32 {
     // Anything at or beyond the last value returns the last value
     let end = self.points[self.points.len()-1].0;
     if val >= end {
