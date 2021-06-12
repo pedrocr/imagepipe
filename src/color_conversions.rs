@@ -64,6 +64,19 @@ pub fn lab_to_rgb(rgbmatrix: [[f32;3];3], pixin: &[f32]) -> (f32, f32, f32) {
     (r, g, b)
 }
 
+#[inline(always)]
+pub fn temp_tint_to_rgb(temp: f32, tint: f32) -> (f32, f32, f32) {
+    let tint = tint / 10000.0;
+    let xyz = temp_to_xyz(temp);
+    let (x, y , z) = (xyz[0], xyz[1]/tint, xyz[2]);
+
+    let rgbmatrix = *XYZ_D65_33;
+    let r = x * rgbmatrix[0][0] + y * rgbmatrix[0][1] + z * rgbmatrix[0][2];
+    let g = x * rgbmatrix[1][0] + y * rgbmatrix[1][1] + z * rgbmatrix[1][2];
+    let b = x * rgbmatrix[2][0] + y * rgbmatrix[2][1] + z * rgbmatrix[2][2];
+    (r, g, b)
+}
+
 // Encapsulate a given transformation including a lookup table for speedup
 struct TransformLookup {
   max: f32,
