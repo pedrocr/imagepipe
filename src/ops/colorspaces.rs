@@ -57,8 +57,6 @@ impl OpToLab {
   }
 
   pub fn set_temp(&mut self, temp: f32, tint: f32) {
-    let tint = tint / 10000.0;
-
     let xyz = temp_to_xyz(temp);
     let xyz = [xyz[0], xyz[1]/tint, xyz[2]];
     for i in 0..4 {
@@ -82,7 +80,7 @@ impl OpToLab {
       }
     }
     let (temp, tint) = xyz_to_temp(xyz);
-    (temp, tint*10000.0)
+    (temp, tint)
   }
 }
 

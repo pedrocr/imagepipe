@@ -66,7 +66,6 @@ pub fn lab_to_rgb(rgbmatrix: [[f32;3];3], pixin: &[f32]) -> (f32, f32, f32) {
 
 #[inline(always)]
 pub fn temp_tint_to_rgb(temp: f32, tint: f32) -> (f32, f32, f32) {
-    let tint = tint / 10000.0;
     let xyz = temp_to_xyz(temp);
     let (x, y , z) = (xyz[0], xyz[1]/tint, xyz[2]);
 
