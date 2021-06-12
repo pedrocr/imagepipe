@@ -14,6 +14,7 @@ pub use self::pipeline::*;
 pub use self::ops::*;
 pub mod color_conversions;
 mod scaling;
+pub use self::ops::curves::SplineFunc;
 
 use std::path::Path;
 

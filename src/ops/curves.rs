@@ -65,7 +65,7 @@ pub struct SplineFunc {
 
 impl SplineFunc {
   // Monotone cubic interpolation code adapted from the Javascript example in Wikipedia
-  fn new(p: &[(f32,f32)]) -> SplineFunc {
+  pub fn new(p: &[(f32,f32)]) -> SplineFunc {
     let mut points = Vec::new();
     points.push((0.0, 0.0));
     points.extend_from_slice(p);
