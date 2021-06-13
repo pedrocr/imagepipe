@@ -67,9 +67,13 @@ impl SplineFunc {
   // Monotone cubic interpolation code adapted from the Javascript example in Wikipedia
   pub fn new(p: &[(f32,f32)]) -> SplineFunc {
     let mut points = Vec::new();
-    points.push((0.0, 0.0));
+    if p.len() == 0 || (p[0].0 > 0.0 && p[0].1 > 0.0) {
+      points.push((0.0, 0.0));
+    }
     points.extend_from_slice(p);
-    points.push((1.0, 1.0));
+    if p.len() == 0 || (p[p.len()-1].0 < 1.0 && p[p.len()-1].1 < 1.0) {
+      points.push((1.0, 1.0));
+    }
 
     // Get consecutive differences and slopes
     let mut dxs = Vec::new();
@@ -125,7 +129,13 @@ impl SplineFunc {
     if val >= end {
       return self.points[self.points.len()-1].1;
     }
-    
+
+    // Anything at or under the first value returns the first value
+    let first = self.points[0].0;
+    if val <= first {
+      return self.points[0].1;
+    }
+
     // Search for the interval x is in, returning the corresponding y if x is one of the original xs
     let mut low: isize = 0;
     let mut mid: isize;
@@ -144,5 +154,36 @@ impl SplineFunc {
     let diff = val - self.points[i].0;
 
     self.points[i].1 + self.c1s[i]*diff + self.c2s[i]*diff*diff + self.c3s[i]*diff*diff*diff
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn extremes() {
+    let spline = SplineFunc::new(&[]);
+    assert_eq!(spline.interpolate(0.0), 0.0);
+    assert_eq!(spline.interpolate(1.0), 1.0);
+  }
+
+  #[test]
+  fn saturates() {
+    let spline = SplineFunc::new(&[]);
+    assert_eq!(spline.interpolate(1.5), 1.0);
+    assert_eq!(spline.interpolate(-0.2), 0.0);
+  }
+
+  #[test]
+  fn high_blackpoint() {
+    let spline = SplineFunc::new(&[(0.0,0.2)]);
+    assert_eq!(spline.interpolate(0.0), 0.2);
+  }
+
+  #[test]
+  fn low_whitepoint() {
+    let spline = SplineFunc::new(&[(1.0,0.8)]);
+    assert_eq!(spline.interpolate(1.0), 0.8);
   }
 }
