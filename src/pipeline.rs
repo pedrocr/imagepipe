@@ -9,7 +9,7 @@ extern crate serde_yaml;
 use self::serde::{Serialize,Deserialize};
 
 extern crate image;
-use image::DynamicImage;
+use image::{RgbImage, DynamicImage};
 
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -140,10 +140,20 @@ pub struct PipelineGlobals {
   pub settings: PipelineSettings,
 }
 
+impl PipelineGlobals {
+  pub fn mock(width: u32, height: u32) -> Self {
+    Self {
+      image: ImageSource::Other(DynamicImage::ImageRgb8(RgbImage::new(width, height))),
+      settings: PipelineSettings::default(),
+    }
+  }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PipelineOps {
   pub gofloat: gofloat::OpGoFloat,
   pub demosaic: demosaic::OpDemosaic,
+  pub rotatecrop: rotatecrop::OpRotateCrop,
   pub tolab: colorspaces::OpToLab,
   pub basecurve: curves::OpBaseCurve,
   pub fromlab: colorspaces::OpFromLab,
@@ -156,6 +166,7 @@ impl PipelineOps {
     Self {
       gofloat: gofloat::OpGoFloat::new(&img),
       demosaic: demosaic::OpDemosaic::new(&img),
+      rotatecrop: rotatecrop::OpRotateCrop::new(&img),
       tolab: colorspaces::OpToLab::new(&img),
       basecurve: curves::OpBaseCurve::new(&img),
       fromlab: colorspaces::OpFromLab::new(&img),
@@ -200,6 +211,7 @@ macro_rules! all_ops {
     for_vals!([
       $ops.gofloat,
       $ops.demosaic,
+      $ops.rotatecrop,
       $ops.tolab,
       $ops.basecurve,
       $ops.fromlab,
@@ -219,6 +231,7 @@ macro_rules! all_ops_reverse {
       $ops.fromlab,
       $ops.basecurve,
       $ops.tolab,
+      $ops.rotatecrop,
       $ops.demosaic,
       $ops.gofloat
     ] |$x, $i| {

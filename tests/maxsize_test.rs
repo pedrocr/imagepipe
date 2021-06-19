@@ -77,3 +77,14 @@ fn crops() {
   pipeline.ops.gofloat.crop_right = 1;
   assert_width(&mut pipeline, 64, 31);
 }
+
+#[test]
+fn rotatecrop() {
+  let mut pipeline = create_pipeline();
+  pipeline.globals.settings.maxwidth = 64;
+  pipeline.ops.rotatecrop.crop_top = 0.1;
+  pipeline.ops.rotatecrop.crop_bottom = 0.1;
+  pipeline.ops.rotatecrop.crop_left = 0.1;
+  pipeline.ops.rotatecrop.crop_right = 0.1;
+  assert_width(&mut pipeline, 64, 32);
+}
