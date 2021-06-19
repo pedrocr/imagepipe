@@ -1,6 +1,9 @@
 use crate::opbasics::*;
 
-static EPSILON: f32 = 0.0000001;
+// Crops that are less than 1 pixel in a million are treated as no-ops
+// Transforms that need more than 1:million magnification are broken and are
+// thus also treated as no-ops
+static EPSILON: f32 = 1.0 / 1000000.0;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct OpRotateCrop {
@@ -36,17 +39,9 @@ impl<'a> ImageOp<'a> for OpRotateCrop {
       log::error!("Trying to crop top outside image");
       return buf;
     }
-    let width = (buf.width as f32) - (buf.width as f32) * (self.crop_left + self.crop_right);
-    if width < 1.0 || width > buf.width as f32 {
-      log::error!("Trying to crop width beyond limits");
-      return buf;
-    }
-    let height = (buf.height as f32) - (buf.height as f32) * (self.crop_top + self.crop_bottom);
-    if height < 1.0 || height > buf.height as f32 {
-      log::error!("Trying to crop height beyond limits");
-      return buf;
-    }
-    let (x, y, width, height) = (x as usize, y as usize, width as usize, height as usize);
+    let (width, height) = self.transform_forward(buf.width, buf.height);
+    if (width, height) == (buf.width, buf.height) { return buf; }
+    let (x, y) = (x as usize, y as usize);
     let mut newbuffer = OpBuffer::new(width, height, buf.colors, buf.monochrome);
     newbuffer.mutate_lines(&(|line: &mut [f32], row| {
       for (o, i) in line.chunks_exact_mut(buf.colors)
@@ -58,33 +53,11 @@ impl<'a> ImageOp<'a> for OpRotateCrop {
   }
 
   fn transform_forward(&self, width: usize, height: usize) -> (usize, usize) {
-    if self.noop() { return (width, height); }
-    let nwidth = (width as f32) * (1.0 - self.crop_left - self.crop_right);
-    if nwidth < 1.0 || nwidth > width as f32 {
-      log::error!("Trying to crop width beyond limits");
-      return (width, height);
-    }
-    let nheight = (height as f32) * (1.0 - self.crop_top - self.crop_bottom);
-    if nheight < 1.0 || nheight > height as f32 {
-      log::error!("Trying to crop height beyond limits");
-      return (width, height);
-    }
-    (nwidth as usize, nheight as usize)
+    self.calc_size(width, height, false)
   }
 
   fn transform_reverse(&self, width: usize, height: usize) -> (usize, usize) {
-    if self.noop() { return (width, height); }
-    let nwidth = (width as f32) / (1.0 - self.crop_left - self.crop_right);
-    if nwidth < 1.0 {
-      log::error!("Trying to crop width beyond limits");
-      return (width, height);
-    }
-    let nheight = (height as f32) / (1.0 - self.crop_top - self.crop_bottom);
-    if nheight < 1.0 {
-      log::error!("Trying to crop height beyond limits");
-      return (width, height);
-    }
-    (nwidth as usize, nheight as usize)
+    self.calc_size(width, height, true)
   }
 }
 
@@ -94,6 +67,40 @@ impl OpRotateCrop {
     self.crop_right.abs() < EPSILON &&
     self.crop_bottom.abs() < EPSILON &&
     self.crop_left.abs() < EPSILON
+  }
+
+  fn calc_size(&self, width: usize, height: usize, reverse: bool) -> (usize, usize){
+    if self.noop() { return (width, height); }
+
+    let nwidth = {
+      let ratio = 1.0 - self.crop_left - self.crop_right;
+      let nwidth = if reverse {
+        (width as f32 / ratio).round()
+      } else {
+        (width as f32 * ratio).round()
+      };
+      if ratio < EPSILON || nwidth < 1.0 {
+        log::error!("Trying to crop width beyond limits");
+        return (width, height);
+      }
+      nwidth as usize
+    };
+
+    let nheight = {
+      let ratio = 1.0 - self.crop_top - self.crop_bottom;
+      let nheight = if reverse {
+        (height as f32 / ratio).round()
+      } else {
+        (height as f32 * ratio).round()
+      };
+      if ratio < EPSILON || nheight < 1.0 {
+        log::error!("Trying to crop height beyond limits");
+        return (width, height);
+      }
+      nheight as usize
+    };
+
+    (nwidth, nheight)
   }
 }
 
@@ -189,5 +196,33 @@ mod tests {
     assert_eq!(newbuf.height, 80);
     assert_eq!(newbuf.width, 80);
     assert_eq!(&newbuf.data[0], &buffer.data[100*10*3+10*3]);
+  }
+
+  #[test]
+  fn roundtrip_transform() {
+    let mut op = OpRotateCrop {
+      crop_top: 0.0,
+      crop_right: 0.0,
+      crop_bottom: 0.0,
+      crop_left: 0.0,
+    };
+    for dim in (0..10000).step_by(89) {
+      for crop1 in (0..u16::MAX).step_by(97) {
+        for crop2 in (0..u16::MAX).step_by(101) {
+          op.crop_top = input16bit(crop1);
+          op.crop_right = input16bit(crop1);
+          op.crop_bottom = input16bit(crop2);
+          op.crop_left = input16bit(crop2);
+          let (width, height) = (dim as usize, dim as usize);
+          // First reverse and then direct to make sure that if we promised we could
+          // make a given output from a given input we then follow through exactly
+          let intermediate = op.transform_reverse(width, height);
+          let result = op.transform_forward(intermediate.0, intermediate.1);
+          let from = (width, height);
+          assert_eq!(result, from, "Got {:?}->{:?}->{:?} crops ({:.3}/{:.3}/{:.3}/{:.3})",
+            from, intermediate, result, op.crop_top, op.crop_right, op.crop_bottom, op.crop_left);
+        }
+      }
+    }
   }
 }
