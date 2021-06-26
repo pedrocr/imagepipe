@@ -47,19 +47,28 @@ fn scale_down_buffer<T>(
   // This scales by using a rectangular window of the source image for each
   // destination pixel. The destination pixel is filled with a weighted average
   // of the source window, using the square of the distance as the weight.
-  let skip_x = (width as f32) / (nwidth as f32);
-  let skip_y = (height as f32) / (nheight as f32);
+  let skip_x_x = (width as f32) / (nwidth as f32);
+  let skip_x_y = 0.0;
+  let skip_y_x = 0.0;
+  let skip_y_y = (height as f32) / (nheight as f32);
   // Using rayon to make this multithreaded is 10-15% faster on an i5-6200U which
   // is useful but not a great speedup for 2 cores 4 threads. It may even make
   // sense to give this up to not thrash caches.
   out.par_chunks_exact_mut(nwidth*components).enumerate().for_each(|(row, line)| {
-    let from_y = cmp::min(height-1, (skip_y * row as f32).floor() as usize);
-    let to_y = cmp::min(height-1, (skip_y * (row+1) as f32).floor() as usize);
-    let center_y = (row as f32 * skip_y) + (skip_y / 2.0) - 0.5;
+    let from_x = skip_y_x * row as f32;
+    let to_x = skip_y_x * (row+1) as f32;
+    let from_y = skip_y_y * row as f32;
+    let to_y = skip_y_y * (row+1) as f32;
+    let center_x = (skip_y_x * row as f32) + (skip_y_x / 2.0) - 0.5;
+    let center_y = (skip_y_y * row as f32) + (skip_y_y / 2.0) - 0.5;
     for col in 0..nwidth {
-      let from_x = cmp::min(width-1, (skip_x * col as f32).floor() as usize);
-      let to_x = cmp::min(width-1, (skip_x * (col+1) as f32).floor() as usize);
-      let center_x = (col as f32 * skip_x) + (skip_x / 2.0) - 0.5;
+      let from_x = cmp::min(width-1, (from_x + (skip_x_x * col as f32)).floor() as usize);
+      let to_x = cmp::min(width-1, (to_x + (skip_x_x * (col+1) as f32)).floor() as usize);
+      let from_y = cmp::min(height-1, (from_y + (skip_x_y * col as f32)).floor() as usize);
+      let to_y = cmp::min(height-1, (to_y + (skip_x_y * (col+1) as f32)).floor() as usize);
+      let center_x = center_x + (skip_x_x * col as f32) + (skip_x_x / 2.0);
+      let center_y = center_y + (skip_x_y * col as f32) + (skip_x_y / 2.0);
+
       let mut sums = [0.0 as f32; 4];
       let mut counts = [0.0 as f32; 4];
       for y in from_y..=to_y {
@@ -73,8 +82,8 @@ fn scale_down_buffer<T>(
           //        - A good windowed sinc function like Lanczos that should
           //          preserve more detail but will always have some artifacts
           //          in some cases
-          let delta_x = (x as f32 - center_x) / skip_x;
-          let delta_y = (y as f32 - center_y) / skip_y;
+          let delta_x = (x as f32 - center_x) / skip_x_x;
+          let delta_y = (y as f32 - center_y) / skip_y_y;
           let factor = 1.0 - (delta_x*delta_x) - (delta_y*delta_y);
           let factor = if factor < 0.0 {0.0} else {factor};
 
