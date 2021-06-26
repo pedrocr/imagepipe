@@ -46,7 +46,7 @@ fn scale_down_buffer<T>(
 
   // This scales by using a rectangular window of the source image for each
   // destination pixel. The destination pixel is filled with a weighted average
-  // of the source window, using the distance as the weight.
+  // of the source window, using the square of the distance as the weight.
   let skip_x = (width as f32) / (nwidth as f32);
   let skip_y = (height as f32) / (nheight as f32);
   // Using rayon to make this multithreaded is 10-15% faster on an i5-6200U which
@@ -64,9 +64,18 @@ fn scale_down_buffer<T>(
       let mut counts = [0.0 as f32; 4];
       for y in from_y..=to_y {
         for x in from_x..=to_x {
+          // FIXME: Hopefully this is a reasonable low-pass filter that works for
+          //        most cases but something more sophisticated may be useful.
+          //        More specifically probably one of two things:
+          //        - A gaussian filter with parameters calculated based on how
+          //          much scale down we are doing so as to exactly remove the
+          //          high frequencies we can no longer represent
+          //        - A good windowed sinc function like Lanczos that should
+          //          preserve more detail but will always have some artifacts
+          //          in some cases
           let delta_x = (x as f32 - center_x) / skip_x;
           let delta_y = (y as f32 - center_y) / skip_y;
-          let factor = 1.0 - ((delta_x*delta_x) + (delta_y*delta_y)).sqrt();
+          let factor = 1.0 - (delta_x*delta_x) - (delta_y*delta_y);
           let factor = if factor < 0.0 {0.0} else {factor};
 
           if let Some(cfa) = cfa {
