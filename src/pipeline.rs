@@ -22,7 +22,7 @@ use std::time::Instant;
 ///
 /// The data is a Vec<u8> width width*height*3 elements, where each element is a value
 /// between 0 and 255 with the intensity of the color channel with gamma applied
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SRGBImage {
   pub width: usize,
   pub height: usize,
@@ -33,7 +33,7 @@ pub struct SRGBImage {
 ///
 /// The data is a Vec<u16> width width*height*3 elements, where each element is a value
 /// between 0 and 65535 with the intensity of the color channel with gamma applied
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SRGBImage16 {
   pub width: usize,
   pub height: usize,

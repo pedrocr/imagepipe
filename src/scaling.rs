@@ -43,7 +43,7 @@ fn scale_down_buffer<T>(
   ) -> Vec<T>
   where f32: AsPrimitive<T>, T: AsPrimitive<f32>, T: Sync+Send {
 
-  transform_buffer(src, width, height, (0, 0), (width as isize, 0), (0, height as isize),
+  transform_buffer(src, width, height, (0, 0), (width as isize - 1, 0), (0, height as isize - 1),
     nwidth, nheight, components, cfa)
 }
 
@@ -178,5 +178,27 @@ pub fn scale_down_srgb16(buf: &SRGBImage16, nwidth: usize, nheight: usize) -> SR
     width: nwidth,
     height: nheight,
     data,
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn scaling_noop() {
+    let width = 150;
+    let height = 150;
+    let mut data = vec![0 as u16; width*height*3];
+    for (i, o) in data.chunks_exact_mut(1).enumerate() {
+      o[0] = i as u16;
+    }
+    let orig = SRGBImage16 {
+      width,
+      height,
+      data,
+    };
+    let new = scale_down_srgb16(&orig, width, height);
+    assert_eq!(orig, new);
   }
 }
