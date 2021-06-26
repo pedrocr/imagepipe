@@ -42,15 +42,34 @@ fn scale_down_buffer<T>(
   cfa: Option<&CFA>,
   ) -> Vec<T>
   where f32: AsPrimitive<T>, T: AsPrimitive<f32>, T: Sync+Send {
+
+  transform_buffer(src, width, height, (0, 0), (width as isize, 0), (0, height as isize),
+    nwidth, nheight, components, cfa)
+}
+
+#[inline(always)]
+fn transform_buffer<T>(
+  src: &[T],
+  width: usize,
+  height: usize,
+  topleft: (isize, isize),
+  topright: (isize, isize),
+  bottomleft: (isize, isize),
+  nwidth: usize,
+  nheight: usize,
+  components: usize,
+  cfa: Option<&CFA>,
+  ) -> Vec<T>
+  where f32: AsPrimitive<T>, T: AsPrimitive<f32>, T: Sync+Send {
   let mut out = vec![(0 as f32).as_(); nwidth*nheight*components];
 
   // This scales by using a rectangular window of the source image for each
   // destination pixel. The destination pixel is filled with a weighted average
   // of the source window, using the square of the distance as the weight.
-  let skip_x_x = (width as f32) / (nwidth as f32);
-  let skip_x_y = 0.0;
-  let skip_y_x = 0.0;
-  let skip_y_y = (height as f32) / (nheight as f32);
+  let skip_x_x = (topright.0 as f32- topleft.0 as f32) / (nwidth as f32);
+  let skip_x_y = (topright.1 as f32 - topleft.1 as f32) / (nwidth as f32);
+  let skip_y_x = (bottomleft.0 as f32 - topleft.0 as f32) / (nheight as f32);
+  let skip_y_y = (bottomleft.1 as f32 - topleft.1 as f32) / (nheight as f32);
   // Using rayon to make this multithreaded is 10-15% faster on an i5-6200U which
   // is useful but not a great speedup for 2 cores 4 threads. It may even make
   // sense to give this up to not thrash caches.
