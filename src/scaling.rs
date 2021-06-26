@@ -3,6 +3,7 @@ use crate::pipeline::{SRGBImage, SRGBImage16};
 use rawloader::CFA;
 use num_traits::cast::AsPrimitive;
 use rayon::prelude::*;
+use std::cmp;
 
 fn calculate_scaling_total(width: usize, height: usize, maxwidth: usize, maxheight: usize) -> (f32, usize, usize) {
   if maxwidth == 0 && maxheight == 0 {
@@ -30,18 +31,6 @@ pub fn calculate_scale(width: usize, height: usize, maxwidth: usize, maxheight: 
   calculate_scaling_total(width, height, maxwidth, maxheight).0
 }
 
-fn calc_skips(idx: usize, idxmax: usize, skip: f32) -> (usize, usize, f32, f32) {
-  let from = (idx as f32)*skip;
-  let fromback = from.floor();
-  let fromfactor = 1.0 - (from-fromback).fract();
-
-  let to = ((idx+1) as f32)*skip;
-  let toforward = (idxmax as f32).min(to.ceil());
-  let tofactor = (toforward-to).fract();
-
-  (fromback as usize, toforward as usize, fromfactor, tofactor)
-}
-
 #[inline(always)]
 fn scale_down_buffer<T>(
   src: &[T],
@@ -54,34 +43,42 @@ fn scale_down_buffer<T>(
   ) -> Vec<T>
   where f32: AsPrimitive<T>, T: AsPrimitive<f32>, T: Sync+Send {
   let mut out = vec![(0 as f32).as_(); nwidth*nheight*components];
-  let rowskip = (width as f32) / (nwidth as f32);
-  let colskip = (height as f32) / (nheight as f32);
+
+  // This scales by using a rectangular window of the source image for each
+  // destination pixel. The destination pixel is filled with a weighted average
+  // of the source window, using the distance as the weight.
+  let skip_x = (width as f32) / (nwidth as f32);
+  let skip_y = (height as f32) / (nheight as f32);
   // Using rayon to make this multithreaded is 10-15% faster on an i5-6200U which
   // is useful but not a great speedup for 2 cores 4 threads. It may even make
   // sense to give this up to not thrash caches.
   out.par_chunks_exact_mut(nwidth*components).enumerate().for_each(|(row, line)| {
+    let from_y = cmp::min(height-1, (skip_y * row as f32).floor() as usize);
+    let to_y = cmp::min(height-1, (skip_y * (row+1) as f32).floor() as usize);
+    let center_y = (row as f32 * skip_y) + (skip_y / 2.0) - 0.5;
     for col in 0..nwidth {
-      let mut sums: [f32; 4] = [0.0;4];
-      let mut counts: [f32; 4] = [0.0;4];
-      let (fromrow, torow, topfactor, bottomfactor) = calc_skips(row, height, rowskip);
-      for y in fromrow..torow {
-        let (fromcol, tocol, leftfactor, rightfactor) = calc_skips(col, width, colskip);
-        for x in fromcol..tocol {
-          let factor = {
-            (if y == fromrow {topfactor} else if y == torow {bottomfactor} else {1.0}) *
-            (if x == fromcol {leftfactor} else if x == tocol {rightfactor} else {1.0})
-          };
+      let from_x = cmp::min(width-1, (skip_x * col as f32).floor() as usize);
+      let to_x = cmp::min(width-1, (skip_x * (col+1) as f32).floor() as usize);
+      let center_x = (col as f32 * skip_x) + (skip_x / 2.0) - 0.5;
+      let mut sums = [0.0 as f32; 4];
+      let mut counts = [0.0 as f32; 4];
+      for y in from_y..=to_y {
+        for x in from_x..=to_x {
+          let delta_x = (x as f32 - center_x) / skip_x;
+          let delta_y = (y as f32 - center_y) / skip_y;
+          let factor = 1.0 - ((delta_x*delta_x) + (delta_y*delta_y)).sqrt();
+          let factor = if factor < 0.0 {0.0} else {factor};
 
-            if let Some(cfa) = cfa {
-              let c = cfa.color_at(y, x);
-              sums[c] += src[y*width+x].as_() * factor;
+          if let Some(cfa) = cfa {
+            let c = cfa.color_at(y, x);
+            sums[c] += src[y*width+x].as_() * factor;
+            counts[c] += factor;
+          } else {
+            for c in 0..components {
+              sums[c] += src[(y*width+x)*components+c].as_() * factor;
               counts[c] += factor;
-           } else {
-              for c in 0..components {
-                sums[c] += src[(y*width+x)*components+c].as_() * factor;
-                counts[c] += factor;
-              }
-           }
+            }
+          }
         }
       }
 
