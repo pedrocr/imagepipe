@@ -39,20 +39,27 @@ impl<'a> ImageOp<'a> for OpRotateCrop {
   fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
     if self.noop() { return buf; }
 
-    let x = ((buf.width as f32) * self.crop_left).floor();
-    if x < 0.0 || x > buf.width as f32 {
+    // Calculate source and destination sizes
+    let (swidth, sheight) = (buf.width as f32, buf.height as f32);
+    let (nwidth, nheight) = self.calc_size(buf.width, buf.height, false);
+    let (fnwidth, fnheight) = (nwidth as f32, nheight as f32);
+
+    // Figure out x and y
+    let x = (swidth * self.crop_left).floor();
+    if x < 0.0 || x > swidth {
       log::error!("Trying to crop left outside image");
       return buf;
     }
-    let y = ((buf.height as f32) * self.crop_top).floor();
-    if y < 0.0 || y > buf.height as f32 {
+    let y = (sheight * self.crop_top).floor();
+    if y < 0.0 || y > sheight {
       log::error!("Trying to crop top outside image");
       return buf;
     }
-    let (width, height) = self.calc_size(buf.width, buf.height, false);
-    if (width, height) == (buf.width, buf.height) { return buf; }
-    let (x, y) = (x as isize, y as isize);
-    let newbuffer = buf.transform((x,y), (x+width as isize-1, y), (x, y+height as isize-1), width, height);
+
+    let topleft = self.rotate_point_reverse(x, y, fnwidth, fnheight, swidth, sheight);
+    let topright = self.rotate_point_reverse(x + fnwidth - 1.0, y, fnwidth, fnheight, swidth, sheight);
+    let bottomleft = self.rotate_point_reverse(x, y + fnheight - 1.0, fnwidth, fnheight, swidth, sheight);
+    let newbuffer = buf.transform(topleft, topright, bottomleft, nwidth, nheight);
     Arc::new(newbuffer)
   }
 
@@ -85,6 +92,20 @@ impl OpRotateCrop {
     self.crop_right.abs() < EPSILON &&
     self.crop_bottom.abs() < EPSILON &&
     self.crop_left.abs() < EPSILON
+  }
+
+  fn rotate_point_reverse(&self, x: f32, y: f32, width: f32, height: f32, swidth: f32, sheight: f32) -> (isize, isize) {
+    if self.rotation < EPSILON {
+      (x as isize, y as isize)
+    } else {
+      let angle = FRAC_PI_2 * if self.rotation > 1.0 {1.0} else {self.rotation};
+      let (sin, cos) = angle.sin_cos();
+      // Translate the coordinates to the center
+      let (tx, ty) = (x - (width / 2.0), y - (height / 2.0));
+      let nx = tx*cos + ty*sin + (swidth / 2.0);
+      let ny = - tx*sin + ty*cos + (sheight / 2.0);
+      (nx as isize, ny as isize)
+    }
   }
 
   fn calc_size(&self, owidth: usize, oheight: usize, reverse: bool) -> (usize, usize){
@@ -229,6 +250,24 @@ mod tests {
     assert_eq!(newbuf.height, 80);
     assert_eq!(newbuf.width, 80);
     assert_eq!(&newbuf.data[0], &buffer.data[100*10*3+10*3]);
+  }
+
+  #[test]
+  fn rotate_45() {
+    let (buffer, mut op, globals) = setup();
+    op.rotation = 0.5;
+    let newbuf = op.run(&globals, buffer.clone());
+    assert_eq!(newbuf.height, 141);
+    assert_eq!(newbuf.width, 141);
+  }
+
+  #[test]
+  fn rotate_90() {
+    let (buffer, mut op, globals) = setup();
+    op.rotation = 1.0;
+    let newbuf = op.run(&globals, buffer.clone());
+    assert_eq!(newbuf.height, 100);
+    assert_eq!(newbuf.width, 100);
   }
 
   #[test]
