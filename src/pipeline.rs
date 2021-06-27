@@ -96,11 +96,11 @@ pub trait ImageOp<'a>: Debug+Serialize+Deserialize<'a> {
     selfhasher.result()
   }
   // What size is the output the operation creates given its input
-  fn transform_forward(&self, width: usize, height: usize) -> (usize, usize) {
+  fn transform_forward(&mut self, width: usize, height: usize) -> (usize, usize) {
     (width, height)
   }
   // What size is the input the operation needs to create a given output
-  fn transform_reverse(&self, width: usize, height: usize) -> (usize, usize) {
+  fn transform_reverse(&mut self, width: usize, height: usize) -> (usize, usize) {
     (width, height)
   }
 }
@@ -311,7 +311,7 @@ impl Pipeline {
     // Calculate what size of image we should scale down to at the demosaic stage
     let mut width = self.globals.image.width();
     let mut height = self.globals.image.height();
-    all_ops!(self.ops, |ref op, _i| {
+    all_ops!(self.ops, |ref mut op, _i| {
       let (w, h) = op.transform_forward(width, height);
       width = w;
       height = h;
@@ -322,7 +322,7 @@ impl Pipeline {
     let (mut width, mut height) =
       crate::scaling::scaling_size(width, height, maxwidth, maxheight);
     log::debug!("Final image size is {}x{}", width, height);
-    all_ops_reverse!(self.ops, |ref op, _i| {
+    all_ops_reverse!(self.ops, |ref mut op, _i| {
       let (w, h) = op.transform_reverse(width, height);
       width = w;
       height = h;

@@ -61,7 +61,7 @@ impl<'a> ImageOp<'a> for OpGoFloat {
     }
   }
 
-  fn transform_forward(&self, width: usize, height: usize) -> (usize, usize) {
+  fn transform_forward(&mut self, width: usize, height: usize) -> (usize, usize) {
     let (_, _, width, height) = self.size_image(width, height);
     (width, height)
   }

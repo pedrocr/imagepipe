@@ -72,14 +72,14 @@ impl<'a> ImageOp<'a> for OpTransform {
     }
   }
 
-  fn transform_forward(&self, width: usize, height: usize) -> (usize, usize) {
+  fn transform_forward(&mut self, width: usize, height: usize) -> (usize, usize) {
     match self.rotation {
       Rotation::Rotate90 | Rotation::Rotate270 => (height, width),
       _ => (width, height),
     }
   }
 
-  fn transform_reverse(&self, width: usize, height: usize) -> (usize, usize) {
+  fn transform_reverse(&mut self, width: usize, height: usize) -> (usize, usize) {
     self.transform_forward(width, height)
   }
 }
