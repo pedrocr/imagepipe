@@ -71,6 +71,11 @@ impl<'a> ImageOp<'a> for OpRotateCrop {
     self.output_size = Some((width, height));
     self.calc_size(width, height, true)
   }
+
+  fn reset(&mut self) {
+    self.input_ratio = 1.0;
+    self.output_size = None;
+  }
 }
 
 impl OpRotateCrop {

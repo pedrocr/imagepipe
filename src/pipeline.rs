@@ -103,6 +103,8 @@ pub trait ImageOp<'a>: Debug+Serialize+Deserialize<'a> {
   fn transform_reverse(&mut self, width: usize, height: usize) -> (usize, usize) {
     (width, height)
   }
+  // Reset any saved data so the pipeline runs again, for most ops this is noop
+  fn reset(&mut self) {}
 }
 
 #[derive(Debug, Copy, Clone, Serialize)]
@@ -308,6 +310,10 @@ impl Pipeline {
 
   pub fn run(&mut self, cache: Option<&PipelineCache>) -> Arc<OpBuffer> {
     do_timing!("  total pipeline", {
+    // Reset all ops to make sure we're starting clean
+    all_ops!(self.ops, |ref mut op, _i| {
+      op.reset();
+    });
     // Calculate what size of image we should scale down to at the demosaic stage
     let mut width = self.globals.image.width();
     let mut height = self.globals.image.height();
