@@ -59,6 +59,25 @@ impl OpBuffer {
     out
   }
 
+  pub fn transform(&self,
+    topleft: (isize, isize),
+    topright: (isize, isize),
+    bottomleft: (isize, isize),
+    width: usize,
+    height: usize) -> OpBuffer {
+
+    let newdata = crate::scaling::transform_buffer(&self.data, self.width, self.height,
+      topleft, topright, bottomleft, width, height, self.colors, None);
+
+    Self {
+      width,
+      height,
+      colors: self.colors,
+      monochrome: self.monochrome,
+      data: newdata,
+    }
+  }
+
   /// Helper function to allow human readable creation of `OpBuffer` instances
   pub fn from_rgb_str_vec(data: Vec<&str>) -> OpBuffer {
     let width = data.first().expect("Invalid data for rgb helper function").len();

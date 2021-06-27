@@ -41,14 +41,8 @@ impl<'a> ImageOp<'a> for OpRotateCrop {
     }
     let (width, height) = self.transform_forward(buf.width, buf.height);
     if (width, height) == (buf.width, buf.height) { return buf; }
-    let (x, y) = (x as usize, y as usize);
-    let mut newbuffer = OpBuffer::new(width, height, buf.colors, buf.monochrome);
-    newbuffer.mutate_lines(&(|line: &mut [f32], row| {
-      for (o, i) in line.chunks_exact_mut(buf.colors)
-        .zip(buf.data[(buf.width*(row+y)+x)*buf.colors..].chunks_exact(buf.colors)) {
-        o.copy_from_slice(i);
-      }
-    }));
+    let (x, y) = (x as isize, y as isize);
+    let newbuffer = buf.transform((x,y), (x+width as isize-1, y), (x, y+height as isize-1), width, height);
     Arc::new(newbuffer)
   }
 

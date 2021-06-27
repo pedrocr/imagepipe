@@ -48,7 +48,7 @@ fn scale_down_buffer<T>(
 }
 
 #[inline(always)]
-fn transform_buffer<T>(
+pub fn transform_buffer<T>(
   src: &[T],
   width: usize,
   height: usize,
@@ -66,20 +66,20 @@ fn transform_buffer<T>(
   // This scales by using a rectangular window of the source image for each
   // destination pixel. The destination pixel is filled with a weighted average
   // of the source window, using the square of the distance as the weight.
-  let skip_x_x = (topright.0 as f32- topleft.0 as f32) / (nwidth as f32);
-  let skip_x_y = (topright.1 as f32 - topleft.1 as f32) / (nwidth as f32);
-  let skip_y_x = (bottomleft.0 as f32 - topleft.0 as f32) / (nheight as f32);
-  let skip_y_y = (bottomleft.1 as f32 - topleft.1 as f32) / (nheight as f32);
+  let skip_x_x = (topright.0 as f32- topleft.0 as f32) / ((nwidth-1) as f32);
+  let skip_x_y = (topright.1 as f32 - topleft.1 as f32) / ((nwidth-1) as f32);
+  let skip_y_x = (bottomleft.0 as f32 - topleft.0 as f32) / ((nheight-1) as f32);
+  let skip_y_y = (bottomleft.1 as f32 - topleft.1 as f32) / ((nheight-1) as f32);
   // Using rayon to make this multithreaded is 10-15% faster on an i5-6200U which
   // is useful but not a great speedup for 2 cores 4 threads. It may even make
   // sense to give this up to not thrash caches.
   out.par_chunks_exact_mut(nwidth*components).enumerate().for_each(|(row, line)| {
-    let from_x = skip_y_x * row as f32;
-    let to_x = skip_y_x * (row+1) as f32;
-    let from_y = skip_y_y * row as f32;
-    let to_y = skip_y_y * (row+1) as f32;
-    let center_x = (skip_y_x * row as f32) + (skip_y_x / 2.0) - 0.5;
-    let center_y = (skip_y_y * row as f32) + (skip_y_y / 2.0) - 0.5;
+    let from_x = topleft.0 as f32 + skip_y_x * row as f32;
+    let to_x = topleft.0 as f32 + skip_y_x * (row+1) as f32;
+    let from_y = topleft.1 as f32 + skip_y_y * row as f32;
+    let to_y = topleft.1 as f32 + skip_y_y * (row+1) as f32;
+    let center_x = (topleft.0 as f32) + (skip_y_x * row as f32) + (skip_y_x / 2.0) - 0.5;
+    let center_y = (topleft.1 as f32) + (skip_y_y * row as f32) + (skip_y_y / 2.0) - 0.5;
     for col in 0..nwidth {
       let from_x = cmp::min(width-1, (from_x + (skip_x_x * col as f32)).floor() as usize);
       let to_x = cmp::min(width-1, (to_x + (skip_x_x * (col+1) as f32)).floor() as usize);
