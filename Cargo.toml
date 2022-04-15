@@ -20,11 +20,7 @@ bincode = "1"
 blake3 = "0.3"
 log = "0.4"
 num-traits = "0.2"
-
-[dependencies.image]
-version = "0.23"
-git = "https://github.com/pedrocr/image"
-branch = "dynimage_width_height"
+image = "0.24"
 
 [dependencies.rawloader]
 version = "0.37"
