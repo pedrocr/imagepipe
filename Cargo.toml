@@ -20,7 +20,7 @@ bincode = "1"
 blake3 = "1"
 log = "0.4"
 num-traits = "0.2"
-image = "0.24"
+image = "0.25"
 
 [dependencies.rawloader]
 version = "0.37"
